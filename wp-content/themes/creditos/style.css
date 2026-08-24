@@ -1,0 +1,45 @@
+/*
+Theme Name: CreditOS
+Theme URI: https://creditos.legacyxfirm.us
+Author: Legacy X Firm
+Description: Application theme for Legacy X Firm Credit Operating Solutions.
+Version: 0.1.0
+Text Domain: creditos
+*/
+
+:root {
+    --creditos-bg: #f6f7fb;
+    --creditos-surface: #ffffff;
+    --creditos-text: #141821;
+    --creditos-muted: #667085;
+    --creditos-border: #e4e7ec;
+    --creditos-radius: 18px;
+}
+
+body {
+    margin: 0;
+    background: var(--creditos-bg);
+    color: var(--creditos-text);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.creditos-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+}
+
+.creditos-sidebar,
+.creditos-card {
+    background: var(--creditos-surface);
+    border: 1px solid var(--creditos-border);
+}
+
+.creditos-main {
+    padding: 32px;
+}
+
+.creditos-card {
+    border-radius: var(--creditos-radius);
+    padding: 24px;
+}
