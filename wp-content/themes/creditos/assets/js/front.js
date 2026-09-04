@@ -69,10 +69,50 @@
     if(pending){try{const payload=JSON.parse(pending);savePayload(payload).then(()=>localStorage.removeItem('creditos_pending_onboarding')).catch(()=>{});}catch(e){localStorage.removeItem('creditos_pending_onboarding');}}
   }
 
+  // Connect every front-page CTA and remove dead '#' links.
+  const scrollTargets={
+    'browse learning':'resources',
+    'browse resources':'resources',
+    'explore insights':'resources',
+    'personal creditos':'roadmaps',
+    'business creditos':'roadmaps',
+    'funding readiness':'features',
+    'creditos ai':'features',
+    'dispute center':'features',
+    'crm':'features',
+    'privacy':'company-info',
+    'terms':'company-info',
+    'security':'company-info',
+    'pricing':'start',
+    'contact':'start'
+  };
+  const externalTargets={
+    'about legacy x firm':'https://legacyxfirm.us/'
+  };
+  document.querySelectorAll('a').forEach(a=>{
+    const href=(a.getAttribute('href')||'').trim();
+    if(href!=='#') return;
+    const text=(a.textContent||'').trim().toLowerCase();
+    const externalKey=Object.keys(externalTargets).find(k=>text.includes(k));
+    if(externalKey){a.href=externalTargets[externalKey];return;}
+    const key=Object.keys(scrollTargets).find(k=>text.includes(k));
+    if(key){
+      a.href='#'+scrollTargets[key];
+      return;
+    }
+    a.href='#start';
+  });
+
+  // Add a stable destination for legal/company footer links without creating dead pages.
+  const footer=document.querySelector('footer');
+  if(footer && !document.getElementById('company-info')) footer.id='company-info';
+
   document.querySelectorAll('a.btn,button.btn').forEach(el=>{
     const t=(el.textContent||'').toLowerCase();
     if(t.includes('get started')||t.includes('start your creditos')||t.includes('request a guided demo')) el.addEventListener('click',openModal);
   });
+  document.querySelectorAll('.audience-card a[href="#start"]').forEach(a=>a.addEventListener('click',openModal));
+
   choices.forEach(c=>c.addEventListener('click',()=>{choices.forEach(x=>x.classList.remove('selected'));c.classList.add('selected');journey=c.dataset.journey;}));
   next?.addEventListener('click',async()=>{
     if(step===0&&!journey){choices[0]?.focus();return;}
