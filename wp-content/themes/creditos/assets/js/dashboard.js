@@ -34,17 +34,16 @@
   }
   async function refresh(){try{hydrate(await api('dashboard'));}catch(err){const summary=document.getElementById('creditos-live-summary');if(summary)summary.textContent=err.message;}}
 
-  // Create concrete destinations for navigation items represented by quick-access cards.
   document.querySelectorAll('.quick').forEach(card=>{
     const label=(card.querySelector('strong')?.textContent||'').toLowerCase();
     if(label.includes('create a task')) card.id='tasks';
     if(label.includes('funding readiness')) card.id='funding';
   });
   document.querySelector('a[href="#reports"]')?.setAttribute('href','#health');
+  document.querySelectorAll('.nav-item').forEach(a=>{if((a.textContent||'').toLowerCase().includes('credit reports')&&cfg.reportImportUrl)a.href=cfg.reportImportUrl;});
 
   function go(id){const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});history.replaceState(null,'','#'+id);}}
 
-  // Every dashboard text link now has a live destination.
   const actionTargets={
     'view all roadmaps':'roadmaps','manage goals':'health','view full analysis':'health','open full dispute center':'disputes','open secure vault':'documents','open crm workspace':'business','open ai center':'ai','manage plan':'documents'
   };
@@ -61,15 +60,16 @@
   }));
 
   const helpBtn=[...document.querySelectorAll('.icon-btn')].find(b=>(b.getAttribute('aria-label')||'').toLowerCase()==='help');
-  helpBtn?.addEventListener('click',()=>{go('ai');setTimeout(()=>alert('CreditOS Help: use Roadmaps for guided steps, Disputes for correction workflows, Documents for your secure vault, and AI Center for guided assistance.'),250);});
+  helpBtn?.addEventListener('click',()=>{go('ai');setTimeout(()=>alert('CreditOS Help: use Roadmaps for guided steps, Credit Reports for secure imports, Disputes for correction workflows, Documents for your secure vault, and AI Center for guided assistance.'),250);});
 
   const search=document.querySelector('.search input[type="search"]');
-  const searchMap={dashboard:'overview',overview:'overview',roadmap:'roadmaps',personal:'roadmaps',business:'business',report:'health',credit:'health',health:'health',dispute:'disputes',task:'tasks',document:'documents',vault:'documents',ai:'ai',funding:'funding',crm:'business',billing:'documents',plan:'documents'};
+  const searchMap={dashboard:'overview',overview:'overview',roadmap:'roadmaps',personal:'roadmaps',business:'business',health:'health',dispute:'disputes',task:'tasks',document:'documents',vault:'documents',ai:'ai',funding:'funding',crm:'business',billing:'documents',plan:'documents'};
   search?.addEventListener('keydown',e=>{
     if(e.key!=='Enter')return;
     e.preventDefault();
     const q=(search.value||'').trim().toLowerCase();
     if(!q)return;
+    if((q.includes('report')||q.includes('credit report'))&&cfg.reportImportUrl){window.location.href=cfg.reportImportUrl;return;}
     const key=Object.keys(searchMap).find(k=>q.includes(k));
     if(key){go(searchMap[key]);return;}
     alert('No matching CreditOS section was found. Try: roadmap, credit report, dispute, task, document, AI, funding, CRM, or billing.');
