@@ -16,6 +16,7 @@ function creditos_ensure_app_pages() {
     $pages = array(
         'dashboard' => array( 'title' => 'CreditOS Dashboard', 'template' => 'page-dashboard.php' ),
         'credit-reports' => array( 'title' => 'CreditOS Credit Reports', 'template' => 'page-credit-reports.php' ),
+        'client-login' => array( 'title' => 'CreditOS Client Login', 'template' => 'page-client-login.php' ),
     );
     foreach ( $pages as $slug => $config ) {
         $page = get_page_by_path( $slug );
@@ -35,6 +36,15 @@ function creditos_ensure_app_pages() {
 }
 add_action( 'after_switch_theme', 'creditos_ensure_app_pages' );
 add_action( 'init', 'creditos_ensure_app_pages', 20 );
+
+function creditos_client_login_url( $login_url, $redirect, $force_reauth ) {
+    if ( is_admin() && ! wp_doing_ajax() ) return $login_url;
+    $url = home_url( '/client-login/' );
+    if ( $redirect ) $url = add_query_arg( 'redirect_to', rawurlencode( $redirect ), $url );
+    if ( $force_reauth ) $url = add_query_arg( 'reauth', '1', $url );
+    return $url;
+}
+add_filter( 'login_url', 'creditos_client_login_url', 10, 3 );
 
 function creditos_theme_assets() {
     $version = wp_get_theme()->get( 'Version' );
@@ -60,6 +70,10 @@ function creditos_theme_assets() {
         wp_localize_script( 'creditos-reports', 'CreditOSConfig', creditos_frontend_config() );
     }
 
+    if ( is_page( 'client-login' ) || is_page_template( 'page-client-login.php' ) ) {
+        wp_enqueue_style( 'creditos-client-login', get_template_directory_uri() . '/assets/css/login.css', array( 'creditos-style' ), $version );
+    }
+
     if ( is_front_page() || is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) || is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) ) {
         wp_enqueue_style( 'creditos-typography', get_template_directory_uri() . '/assets/css/typography.css', array( 'creditos-style' ), $version );
         if ( is_front_page() || is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) ) {
@@ -80,7 +94,7 @@ function creditos_frontend_config() {
         'loggedIn' => is_user_logged_in(),
         'dashboardUrl' => esc_url_raw( home_url( '/dashboard/' ) ),
         'reportImportUrl' => esc_url_raw( home_url( '/credit-reports/' ) ),
-        'loginUrl' => esc_url_raw( wp_login_url( home_url( '/dashboard/' ) ) ),
+        'loginUrl' => esc_url_raw( add_query_arg( 'redirect_to', rawurlencode( home_url( '/dashboard/' ) ), home_url( '/client-login/' ) ) ),
         'registerUrl' => esc_url_raw( wp_registration_url() ),
         'userName' => is_user_logged_in() ? wp_get_current_user()->display_name : '',
         'canStaff' => current_user_can( 'creditos_view_staff_dashboard' ) || current_user_can( 'manage_options' ),
