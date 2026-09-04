@@ -44,11 +44,13 @@ function creditos_theme_assets() {
     if ( is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) ) {
         wp_enqueue_style( 'creditos-dashboard', get_template_directory_uri() . '/assets/css/dashboard.css', array( 'creditos-style' ), $version );
         wp_enqueue_script( 'creditos-dashboard', get_template_directory_uri() . '/assets/js/dashboard.js', array(), $version, true );
+        wp_enqueue_script( 'creditos-layout-polish', get_template_directory_uri() . '/assets/js/layout-polish.js', array( 'creditos-dashboard' ), $version, true );
         wp_localize_script( 'creditos-dashboard', 'CreditOSConfig', creditos_frontend_config() );
     }
 
     if ( is_front_page() || is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) ) {
         wp_enqueue_style( 'creditos-typography', get_template_directory_uri() . '/assets/css/typography.css', array( 'creditos-style' ), $version );
+        wp_enqueue_style( 'creditos-layout-polish', get_template_directory_uri() . '/assets/css/layout-polish.css', array( 'creditos-typography' ), $version );
     }
 }
 add_action( 'wp_enqueue_scripts', 'creditos_theme_assets' );
