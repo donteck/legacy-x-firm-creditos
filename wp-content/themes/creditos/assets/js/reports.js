@@ -7,6 +7,9 @@
   const list=document.getElementById('creditos-report-list');
   const review=document.getElementById('creditos-report-review');
   const refreshBtn=document.getElementById('creditos-refresh-reports');
+  const providerList=document.getElementById('creditos-provider-list');
+  const providerMessage=document.getElementById('creditos-connection-message');
+  const refreshConnections=document.getElementById('creditos-refresh-connections');
 
   async function api(path,options={}){
     const headers={'X-WP-Nonce':cfg.nonce,...(options.headers||{})};
@@ -14,13 +17,17 @@
     const r=await fetch(cfg.restUrl+path,{...options,headers});
     if(r.status===401||r.status===403){const payload=await r.json().catch(()=>({}));if(r.status===401&&cfg.loginUrl){window.location.href=cfg.loginUrl;return null;}throw new Error(payload.message||'Permission denied.');}
     const payload=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(payload.message||'CreditOS request could not be completed.');
+    if(!r.ok){const err=new Error(payload.message||'CreditOS request could not be completed.');err.status=r.status;err.payload=payload;throw err;}
     return payload;
   }
 
   function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));}
   function prettyStatus(v){return String(v||'pending').replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase());}
   function formatDate(v){if(!v)return 'Not provided';const d=new Date(v.replace(' ','T'));return Number.isNaN(d.getTime())?v:d.toLocaleDateString();}
+
+  document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{
+    const id=(a.getAttribute('href')||'').slice(1);const el=document.getElementById(id);if(el){e.preventDefault();el.scrollIntoView({behavior:'smooth',block:'start'});history.replaceState(null,'','#'+id);}
+  }));
 
   fileInput?.addEventListener('change',()=>{fileName.textContent=fileInput.files?.[0]?.name||'No file selected';});
 
@@ -41,6 +48,40 @@
     }catch(err){message.className='import-message error';message.textContent=err.message;}
     finally{button.disabled=false;button.textContent='Import Report →';}
   });
+
+  function providerCard(p){
+    const live=['ready','connected','active','authorization_pending'].includes(p.status);
+    const connected=['connected','active'].includes(p.status);
+    const label=connected?'Connected':live?'Connect':'Provider setup required';
+    return `<article class="provider-card" data-provider="${esc(p.key)}"><div class="provider-badge">${esc((p.bureau||'multi').toUpperCase())}</div><h3>${esc(p.name)}</h3><p>${esc(p.description||'')}</p><div class="provider-meta"><span>Status</span><strong>${esc(prettyStatus(p.status))}</strong></div><button class="reports-btn ${live&&!connected?'primary':''} connect-provider" type="button" data-provider="${esc(p.key)}" ${connected?'disabled':''}>${esc(label)}</button></article>`;
+  }
+
+  async function loadConnections(){
+    if(!providerList)return;
+    providerList.innerHTML='<div class="empty-state">Loading connection options…</div>';
+    try{
+      const data=await api('credit-connections');if(!data)return;
+      providerList.innerHTML=(data.providers||[]).map(providerCard).join('')||'<div class="empty-state">No credit-data providers are registered yet.</div>';
+      providerList.querySelectorAll('.connect-provider').forEach(btn=>btn.addEventListener('click',()=>startConnection(btn.dataset.provider,btn)));
+      if(providerMessage&&!data.consent_valid){providerMessage.className='import-message error';providerMessage.textContent='Complete CreditOS onboarding and consent before connecting credit data.';}
+    }catch(err){providerList.innerHTML=`<div class="empty-state">${esc(err.message)}</div>`;}
+  }
+
+  async function startConnection(provider,button){
+    if(!provider)return;
+    providerMessage.className='import-message';providerMessage.textContent='Preparing secure provider connection…';
+    button.disabled=true;
+    try{
+      const result=await api(`credit-connections/${encodeURIComponent(provider)}/start`,{method:'POST',body:JSON.stringify({return_url:window.location.href})});
+      if(!result)return;
+      providerMessage.className='import-message success';providerMessage.textContent='Secure authorization started. Redirecting to the approved provider…';
+      if(result.authorization_url)window.location.href=result.authorization_url;
+    }catch(err){
+      providerMessage.className=err.status===503?'import-message':'import-message error';
+      providerMessage.textContent=err.message;
+      button.disabled=false;
+    }
+  }
 
   function renderList(reports,selectedId){
     if(!list)return;
@@ -72,5 +113,7 @@
   }
 
   refreshBtn?.addEventListener('click',()=>loadReports());
+  refreshConnections?.addEventListener('click',()=>loadConnections());
+  loadConnections();
   loadReports();
 })();
