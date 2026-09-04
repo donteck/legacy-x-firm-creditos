@@ -7,12 +7,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class CreditOS_Core {
     private $repository;
     private $rest;
+    private $report_import;
 
     public function __construct() {
         $this->maybe_upgrade();
         $this->ensure_role_capabilities();
         $this->repository = new CreditOS_Repository();
         $this->rest = new CreditOS_REST( $this->repository );
+        $this->report_import = new CreditOS_Report_Import( $this->repository );
         add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
     }
 
@@ -57,6 +59,6 @@ class CreditOS_Core {
         echo '<div class="wrap"><h1>' . esc_html__( 'CreditOS', 'creditos' ) . '</h1>';
         echo '<p>' . esc_html__( 'Legacy X Firm Credit Operating Solutions — Personal & Business Credit Intelligence, Management & Automation.', 'creditos' ) . '</p>';
         echo '<p><strong>' . esc_html__( 'Core version:', 'creditos' ) . '</strong> ' . esc_html( CREDITOS_CORE_VERSION ) . '</p>';
-        echo '<p><a class="button button-primary" href="' . esc_url( home_url( '/dashboard/' ) ) . '">' . esc_html__( 'Open CreditOS Dashboard', 'creditos' ) . '</a></p></div>';
+        echo '<p><a class="button button-primary" href="' . esc_url( home_url( '/dashboard/' ) ) . '">' . esc_html__( 'Open CreditOS Dashboard', 'creditos' ) . '</a> <a class="button" href="' . esc_url( home_url( '/credit-reports/' ) ) . '">' . esc_html__( 'Open Credit Report Import Center', 'creditos' ) . '</a></p></div>';
     }
 }
