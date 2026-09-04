@@ -55,6 +55,7 @@ function creditos_theme_assets() {
 
     if ( is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) ) {
         wp_enqueue_style( 'creditos-reports', get_template_directory_uri() . '/assets/css/reports.css', array( 'creditos-style' ), $version );
+        wp_enqueue_style( 'creditos-report-connections', get_template_directory_uri() . '/assets/css/report-connections.css', array( 'creditos-reports' ), $version );
         wp_enqueue_script( 'creditos-reports', get_template_directory_uri() . '/assets/js/reports.js', array(), $version, true );
         wp_localize_script( 'creditos-reports', 'CreditOSConfig', creditos_frontend_config() );
     }
