@@ -1,0 +1,75 @@
+/* CreditOS high-end layout polish: tighter marketing flow + fitted application workspace. */
+
+/* FRONT PAGE — connected, premium, industry-standard rhythm */
+body.creditos-front main{display:block}
+.creditos-front .hero{padding:64px 0 48px}
+.creditos-front .hero-grid{gap:48px}
+.creditos-front .trust{padding:20px 0}
+.creditos-front .section{padding:58px 0}
+.creditos-front .section+.section{border-top:1px solid rgba(107,87,157,.07)}
+.creditos-front .section:nth-of-type(even){background:linear-gradient(180deg,rgba(250,249,255,.48),rgba(255,255,255,.12))}
+.creditos-front .section-head{margin-bottom:26px}
+.creditos-front .section-head h2{margin-bottom:12px}
+.creditos-front .audience-grid,.creditos-front .features,.creditos-front .market-suite,.creditos-front .outcome-grid,.creditos-front .resource-grid,.creditos-front .flow,.creditos-front .roadmaps{gap:16px}
+.creditos-front .audience-card,.creditos-front .feature,.creditos-front .market-card,.creditos-front .outcome-card,.creditos-front .resource-card,.creditos-front .pro-card,.creditos-front .flow-card{padding:24px}
+.creditos-front .roadmap{padding:26px}
+.creditos-front .family-box,.creditos-front .cta-box{padding:30px}
+.creditos-front .brand-statement{padding:20px 24px}
+.creditos-front footer{padding:42px 0 22px}
+.creditos-front .copy{margin-top:26px;padding-top:16px}
+.creditos-front #start{padding-bottom:34px}
+.creditos-front #start+.section{padding-top:28px;padding-bottom:38px}
+
+/* DASHBOARD — maximize usable viewport without shrinking readability */
+body.creditos-dashboard{min-height:100vh}
+.creditos-dashboard .app{grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+.creditos-dashboard .sidebar{padding:14px;height:100vh;overflow-y:auto}
+.creditos-dashboard .brand{margin-bottom:16px}
+.creditos-dashboard .nav-list{gap:3px}
+.creditos-dashboard .nav-item{padding:8px 10px;min-height:42px}
+.creditos-dashboard .sidebar-card{padding:13px}
+.creditos-dashboard .topbar{height:64px;padding:0 18px}
+.creditos-dashboard .content{padding:20px;max-width:1440px;width:100%}
+.creditos-dashboard .head-row{margin-bottom:14px}
+.creditos-dashboard .next-action{padding:15px 17px;margin-bottom:11px}
+.creditos-dashboard .attention-strip{gap:8px;margin-bottom:14px}
+.creditos-dashboard .attention{padding:11px 12px}
+.creditos-dashboard .kpis{gap:9px}
+.creditos-dashboard .kpi{padding:14px}
+.creditos-dashboard .section-label{margin:22px 0 9px}
+.creditos-dashboard .roadmap-grid,.creditos-dashboard .goal-journeys,.creditos-dashboard .health-grid,.creditos-dashboard .dispute-kpis,.creditos-dashboard .vault-billing,.creditos-dashboard .ops-grid,.creditos-dashboard .quick-grid{gap:10px}
+.creditos-dashboard .roadmap-card,.creditos-dashboard .health-card,.creditos-dashboard .vb-card,.creditos-dashboard .ops-card{padding:15px}
+.creditos-dashboard .steps{gap:5px;margin-top:10px}
+.creditos-dashboard .step{padding:7px}
+.creditos-dashboard .goal-journey,.creditos-dashboard .dispute-kpi{padding:14px}
+.creditos-dashboard .quick{padding:13px}
+.creditos-dashboard .table-wrap{margin-top:8px}
+
+/* Backend footer */
+.creditos-dashboard .creditos-app-footer{margin:28px 20px 18px;padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.82);backdrop-filter:blur(18px);box-shadow:0 12px 34px rgba(72,54,128,.06)}
+.creditos-dashboard .creditos-app-footer-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.creditos-dashboard .creditos-app-footer-brand{display:flex;align-items:center;gap:10px;font-weight:900}
+.creditos-dashboard .creditos-app-footer-mark{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--rainbow);color:#fff;font-weight:950}
+.creditos-dashboard .creditos-app-footer-copy{font-size:12px;color:var(--muted);line-height:1.5}
+.creditos-dashboard .creditos-app-footer-links{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;font-weight:800;color:#633cd5}
+.creditos-dashboard .creditos-app-footer-links a:hover{text-decoration:underline}
+
+@media(max-width:1180px){
+  .creditos-front .section{padding:52px 0}
+  .creditos-dashboard .app{grid-template-columns:210px minmax(0,1fr)}
+  .creditos-dashboard .content{padding:16px}
+}
+@media(max-width:900px){
+  .creditos-front .hero{padding:50px 0 38px}
+  .creditos-front .section{padding:46px 0}
+  .creditos-dashboard .content{padding:14px 14px 96px}
+  .creditos-dashboard .creditos-app-footer{margin:18px 14px 96px}
+  .creditos-dashboard .creditos-app-footer-inner{align-items:flex-start;flex-direction:column}
+}
+@media(max-width:680px){
+  .creditos-front .hero{padding:38px 0 30px}
+  .creditos-front .section{padding:38px 0}
+  .creditos-front .section-head{margin-bottom:20px}
+  .creditos-front .audience-card,.creditos-front .feature,.creditos-front .market-card,.creditos-front .outcome-card,.creditos-front .resource-card,.creditos-front .flow-card{padding:20px}
+  .creditos-dashboard .creditos-app-footer{padding:16px;margin-left:11px;margin-right:11px}
+}
