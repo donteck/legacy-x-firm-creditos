@@ -1,0 +1,87 @@
+name: Deploy CreditOS to Hestia
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'wp-content/**'
+      - 'scripts/deploy-hestia.sh'
+      - '.github/workflows/deploy-hestia.yml'
+
+concurrency:
+  group: creditos-hestia-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate WordPress code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: PHP syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find wp-content -type f -name '*.php' -print0)
+
+  deploy:
+    name: Deploy to Hestia
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          HESTIA_HOST: ${{ secrets.HESTIA_HOST }}
+          HESTIA_PORT: ${{ secrets.HESTIA_PORT }}
+          HESTIA_SSH_KEY: ${{ secrets.HESTIA_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$HESTIA_HOST"
+          test -n "$HESTIA_SSH_KEY"
+          PORT="${HESTIA_PORT:-22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$HESTIA_SSH_KEY" > ~/.ssh/creditos_hestia
+          chmod 600 ~/.ssh/creditos_hestia
+          ssh-keyscan -p "$PORT" -H "$HESTIA_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Test Hestia SSH connection
+        shell: bash
+        env:
+          HESTIA_HOST: ${{ secrets.HESTIA_HOST }}
+          HESTIA_PORT: ${{ secrets.HESTIA_PORT }}
+          HESTIA_USER: ${{ secrets.HESTIA_USER }}
+        run: |
+          set -euo pipefail
+          PORT="${HESTIA_PORT:-22}"
+          ssh -i ~/.ssh/creditos_hestia -p "$PORT" -o BatchMode=yes "$HESTIA_USER@$HESTIA_HOST" 'echo "CreditOS Hestia SSH connection OK"'
+
+      - name: Deploy CreditOS theme and plugins
+        shell: bash
+        env:
+          HESTIA_HOST: ${{ secrets.HESTIA_HOST }}
+          HESTIA_PORT: ${{ secrets.HESTIA_PORT }}
+          HESTIA_USER: ${{ secrets.HESTIA_USER }}
+          HESTIA_PATH: ${{ secrets.HESTIA_PATH }}
+        run: bash scripts/deploy-hestia.sh
