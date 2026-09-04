@@ -34,17 +34,53 @@
   }
   async function refresh(){try{hydrate(await api('dashboard'));}catch(err){const summary=document.getElementById('creditos-live-summary');if(summary)summary.textContent=err.message;}}
 
-  // Convert all dashboard text actions into working navigation instead of dead links.
+  function go(id){const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});history.replaceState(null,'','#'+id);}}
+
+  // Every dashboard text link now has a live destination.
   const actionTargets={
     'view all roadmaps':'roadmaps','manage goals':'health','view full analysis':'health','open full dispute center':'disputes','open secure vault':'documents','open crm workspace':'business','open ai center':'ai','manage plan':'documents'
   };
   document.querySelectorAll('a').forEach(a=>{
-    if(a.getAttribute('href')!=='#')return;
+    if((a.getAttribute('href')||'').trim()!=='#')return;
     const text=(a.textContent||'').trim().toLowerCase();
     const key=Object.keys(actionTargets).find(k=>text.includes(k));
-    if(key){a.addEventListener('click',e=>{e.preventDefault();document.getElementById(actionTargets[key])?.scrollIntoView({behavior:'smooth',block:'start'});});}
+    a.href='#'+(key?actionTargets[key]:'overview');
   });
-  document.querySelectorAll('.next-action .btn').forEach(btn=>btn.addEventListener('click',()=>{const staff=document.body.classList.contains('staff-mode');document.getElementById(staff?'disputes':'health')?.scrollIntoView({behavior:'smooth'});}));
+
+  document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{
+    const id=(a.getAttribute('href')||'').slice(1);if(!id)return;
+    const el=document.getElementById(id);if(el){e.preventDefault();go(id);}
+  }));
+
+  // Help button opens the product guidance area instead of doing nothing.
+  const helpBtn=[...document.querySelectorAll('.icon-btn')].find(b=>(b.getAttribute('aria-label')||'').toLowerCase()==='help');
+  helpBtn?.addEventListener('click',()=>{go('ai');setTimeout(()=>alert('CreditOS Help: use Roadmaps for guided steps, Disputes for correction workflows, Documents for your secure vault, and AI Center for guided assistance.'),250);});
+
+  // Search is connected to the current dashboard sections and actions.
+  const search=document.querySelector('.search input[type="search"]');
+  const searchMap={dashboard:'overview',overview:'overview',roadmap:'roadmaps',personal:'roadmaps',business:'business',report:'health',credit:'health',health:'health',dispute:'disputes',task:'tasks',document:'documents',vault:'documents',ai:'ai',funding:'roadmaps',crm:'business',billing:'documents',plan:'documents'};
+  search?.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    e.preventDefault();
+    const q=(search.value||'').trim().toLowerCase();
+    if(!q)return;
+    const key=Object.keys(searchMap).find(k=>q.includes(k));
+    if(key){go(searchMap[key]);return;}
+    alert('No matching CreditOS section was found. Try: roadmap, credit report, dispute, document, AI, funding, CRM, or billing.');
+  });
+
+  document.querySelectorAll('.next-action .btn').forEach(btn=>btn.addEventListener('click',()=>{const staff=document.body.classList.contains('staff-mode');go(staff?'disputes':'health');}));
+
+  // Make attention cards clickable and useful.
+  document.querySelectorAll('.attention').forEach(card=>{
+    card.style.cursor='pointer';card.tabIndex=0;
+    const run=()=>{const t=(card.textContent||'').toLowerCase();if(t.includes('follow-up'))go('disputes');else if(t.includes('business'))go('business');else go('roadmaps');};
+    card.addEventListener('click',run);card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();run();}});
+  });
+
+  // Roadmap cards and goal journeys navigate to their matching operational areas.
+  document.querySelectorAll('.roadmap-card').forEach(card=>{card.style.cursor='pointer';card.tabIndex=0;const run=()=>go('roadmaps');card.addEventListener('click',run);card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();run();}});});
+  document.querySelectorAll('.goal-journey').forEach(card=>{card.style.cursor='pointer';card.tabIndex=0;const run=()=>go((card.textContent||'').toLowerCase().includes('business')?'business':'health');card.addEventListener('click',run);card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();run();}});});
 
   // Quick-access cards execute real database actions where the v0.2 API supports them.
   document.querySelectorAll('.quick').forEach(card=>{
@@ -60,11 +96,15 @@
         const bureau=window.prompt('Bureau or furnisher (optional)')||'';
         try{await api('disputes',{method:'POST',body:JSON.stringify({title,bureau})});await refresh();alert('Draft dispute review created. Human review is required before correspondence is sent.');}catch(err){alert(err.message);}return;
       }
-      if(label.includes('funding')){document.getElementById('roadmaps')?.scrollIntoView({behavior:'smooth'});return;}
-      if(label.includes('ai')){alert('CreditOS AI workspace is prepared in the interface. Provider credentials and approval controls will be connected in the AI integration phase.');}
+      if(label.includes('funding')){go('roadmaps');return;}
+      if(label.includes('ai')){go('ai');alert('CreditOS AI workspace is prepared in the interface. Provider credentials and approval controls will be connected in the AI integration phase.');}
     }
     card.addEventListener('click',run);card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();run();}});
   });
+
+  // User block returns to the top/account overview when clicked.
+  const userBlock=document.querySelector('.topbar .user');
+  if(userBlock){userBlock.style.cursor='pointer';userBlock.tabIndex=0;const run=()=>go('overview');userBlock.addEventListener('click',run);userBlock.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();run();}});}
 
   refresh();
 })();
