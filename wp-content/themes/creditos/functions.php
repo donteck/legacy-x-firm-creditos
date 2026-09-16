@@ -46,6 +46,11 @@ function creditos_client_login_url( $login_url, $redirect, $force_reauth ) {
 }
 add_filter( 'login_url', 'creditos_client_login_url', 10, 3 );
 
+function creditos_asset_version( $relative_path, $fallback ) {
+    $file = get_template_directory() . $relative_path;
+    return file_exists( $file ) ? (string) filemtime( $file ) : $fallback;
+}
+
 function creditos_theme_assets() {
     $version = wp_get_theme()->get( 'Version' );
     wp_enqueue_style( 'creditos-style', get_stylesheet_uri(), array(), $version );
@@ -64,9 +69,12 @@ function creditos_theme_assets() {
     }
 
     if ( is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) ) {
-        wp_enqueue_style( 'creditos-reports', get_template_directory_uri() . '/assets/css/reports.css', array( 'creditos-style' ), $version );
-        wp_enqueue_style( 'creditos-report-connections', get_template_directory_uri() . '/assets/css/report-connections.css', array( 'creditos-reports' ), $version );
-        wp_enqueue_script( 'creditos-reports', get_template_directory_uri() . '/assets/js/reports.js', array(), $version, true );
+        $reports_css_version = creditos_asset_version( '/assets/css/reports.css', $version );
+        $connections_css_version = creditos_asset_version( '/assets/css/report-connections.css', $version );
+        $reports_js_version = creditos_asset_version( '/assets/js/reports.js', $version );
+        wp_enqueue_style( 'creditos-reports', get_template_directory_uri() . '/assets/css/reports.css', array( 'creditos-style' ), $reports_css_version );
+        wp_enqueue_style( 'creditos-report-connections', get_template_directory_uri() . '/assets/css/report-connections.css', array( 'creditos-reports' ), $connections_css_version );
+        wp_enqueue_script( 'creditos-reports', get_template_directory_uri() . '/assets/js/reports.js', array(), $reports_js_version, true );
         wp_localize_script( 'creditos-reports', 'CreditOSConfig', creditos_frontend_config() );
     }
 
