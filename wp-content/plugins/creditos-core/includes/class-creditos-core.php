@@ -8,6 +8,7 @@ class CreditOS_Core {
     private $repository;
     private $rest;
     private $report_import;
+    private $report_processing;
     private $credit_connections;
 
     public function __construct() {
@@ -16,6 +17,7 @@ class CreditOS_Core {
         $this->repository = new CreditOS_Repository();
         $this->rest = new CreditOS_REST( $this->repository );
         $this->report_import = new CreditOS_Report_Import( $this->repository );
+        $this->report_processing = new CreditOS_Report_Processing( $this->repository );
         $this->credit_connections = new CreditOS_Credit_Connections( $this->repository );
         add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
     }
