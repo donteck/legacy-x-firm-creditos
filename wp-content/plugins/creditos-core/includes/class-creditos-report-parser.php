@@ -84,10 +84,35 @@ class CreditOS_Report_Parser {
     private function parse_hard_inquiries($text){if(preg_match('/\b0\s+Hard Inquiries\b/i',$text))return array();return array();}
     private function looks_like_credit_report($text){if(strlen((string)$text)<120)return false;$hits=0;foreach(array('Account Name','Account Number','Experian','Equifax','TransUnion','Credit Report','Prepared For')as$needle)if(stripos($text,$needle)!==false)$hits++;return$hits>=2;}
     private function detect_bureau($text,$fallback){if(stripos($text,'Annual Credit Report - Experian')!==false||stripos($text,'usa.experian.com/acr/')!==false||(stripos($text,'Prepared For')!==false&&stripos($text,'Experian')!==false))return'experian';if(stripos($text,'Equifax')!==false&&stripos($text,'Experian')===false)return'equifax';if(stripos($text,'TransUnion')!==false&&stripos($text,'Experian')===false)return'transunion';return in_array($fallback,array('experian','equifax','transunion','multi'),true)?$fallback:'multi';}
-    private function run_pdftotext($bin,$path,$mode){$tmp=wp_tempnam('creditos.txt');if(!$tmp)return'';$cmd=escapeshellarg($bin).' '.escapeshellarg($mode).' -enc UTF-8 '.escapeshellarg($path).' '.escapeshellarg($tmp).' 2>&1';$output=array();$code=1;@exec($cmd,$output,$code);$text=($code===0&&file_exists($tmp))?@file_get_contents($tmp):'';@unlink($tmp);return$this->clean_text($text);}
+
+    private function function_enabled($name){
+        if(!function_exists($name)) return false;
+        $disabled=array_map('trim',explode(',',(string)ini_get('disable_functions')));
+        return !in_array($name,$disabled,true);
+    }
+
+    private function run_pdftotext($bin,$path,$mode){
+        $tmp=wp_tempnam('creditos.txt'); if(!$tmp)return'';
+        $cmd=escapeshellarg($bin).' '.escapeshellarg($mode).' -enc UTF-8 '.escapeshellarg($path).' '.escapeshellarg($tmp);
+        $ok=false;
+        if($this->function_enabled('proc_open')){
+            $spec=array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w'));
+            $pipes=array(); $proc=@proc_open($cmd,$spec,$pipes);
+            if(is_resource($proc)){
+                @fclose($pipes[0]); if(isset($pipes[1])){@stream_get_contents($pipes[1]);@fclose($pipes[1]);} if(isset($pipes[2])){@stream_get_contents($pipes[2]);@fclose($pipes[2]);}
+                $ok=(@proc_close($proc)===0);
+            }
+        } elseif($this->function_enabled('exec')) {
+            $output=array();$code=1;@exec($cmd.' 2>&1',$output,$code);$ok=($code===0);
+        } elseif($this->function_enabled('shell_exec')) {
+            @shell_exec($cmd.' 2>&1');$ok=file_exists($tmp)&&filesize($tmp)>0;
+        }
+        $text=($ok&&file_exists($tmp))?@file_get_contents($tmp):''; @unlink($tmp); return$this->clean_text($text);
+    }
+
     private function clean_text($text){$text=str_replace("\0",'',(string)$text);$text=preg_replace("/\r\n?|\r/","\n",$text);$text=preg_replace('/[ \t]+$/m','',$text);return trim($text);}
     private function parse_csv($path,$bureau){$h=fopen($path,'r');if(!$h)return new WP_Error('creditos_csv_open','Could not read CSV.');$head=fgetcsv($h);if(!$head){fclose($h);return new WP_Error('creditos_csv_header','Unreadable CSV header.');}$head=array_map(function($v){return sanitize_key(str_replace(array(' ','-'),'_',strtolower(trim($v))));},$head);$rows=array();while(($x=fgetcsv($h))!==false){$x=array_pad($x,count($head),'');$r=array_combine($head,array_slice($x,0,count($head)));$name=isset($r['creditor_name'])?$r['creditor_name']:(isset($r['creditor'])?$r['creditor']:(isset($r['account_name'])?$r['account_name']:''));if($name)$rows[]=array('creditor_name'=>$name,'bureau'=>isset($r['bureau'])?$r['bureau']:$bureau,'account_number_masked'=>isset($r['account_number'])?$r['account_number']:'','account_type'=>isset($r['account_type'])?$r['account_type']:'','balance'=>$this->number(isset($r['balance'])?$r['balance']:null),'credit_limit'=>$this->number(isset($r['credit_limit'])?$r['credit_limit']:null),'status'=>isset($r['status'])?$r['status']:'');}fclose($h);return array('status'=>'normalized','bureau'=>$bureau,'normalized'=>array('tradelines'=>$rows,'collections'=>array(),'inquiries'=>array(),'personal_information'=>array()));}
     private function find_pdftotext(){foreach(array('/usr/bin/pdftotext','/usr/local/bin/pdftotext')as$path)if(is_executable($path))return$path;return false;}
     private function number($value){if($value===null||trim((string)$value)===''||trim((string)$value)==='-')return null;$clean=preg_replace('/[^0-9.\-]/','',(string)$value);return is_numeric($clean)?(float)$clean:null;}
-    public function safe_excerpt($text,$limit=800){$text=preg_replace('/\b\d{3}-\d{2}-\d{4}\b/','***-**-****',(string)$text);$text=preg_replace('/\b\d{9,16}\b/','********',$text);return mb_substr($text,0,$limit);}
+    public function safe_excerpt($text,$limit=800){$text=preg_replace('/\b\d{3}-\d{2}-\d{4}\b/','***-**-****',(string)$text);$text=preg_replace('/\b\d{9,16}\b/','********',$text);return function_exists('mb_substr')?mb_substr($text,0,$limit):substr($text,0,$limit);}
 }
