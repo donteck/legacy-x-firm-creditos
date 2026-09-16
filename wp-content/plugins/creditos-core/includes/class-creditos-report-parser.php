@@ -1,113 +1,30 @@
 <?php
-
-if ( ! defined( 'ABSPATH' ) ) { exit; }
-
-/** CreditOS Phase 1B report parser. Native extraction first; safe fallbacks second. */
-class CreditOS_Report_Parser {
-    public function parse( $path, $format, $bureau = 'multi' ) {
-        if ( ! $path || ! file_exists( $path ) ) return new WP_Error('creditos_parser_file_missing','The uploaded credit report file could not be found.');
-        $format = strtolower((string)$format);
-        if ( 'pdf' === $format ) return $this->parse_pdf($path,$bureau);
-        if ( 'csv' === $format ) return $this->parse_csv($path,$bureau);
-        return new WP_Error('creditos_parser_format','This report format does not use the CreditOS parser.');
-    }
-
-    private function parse_pdf( $path, $bureau ) {
-        $attempts = array();
-        $text = '';
-        $binary = $this->find_pdftotext();
-        if ( $binary ) {
-            foreach ( array(
-                array('-layout','layout'),
-                array('-raw','raw'),
-                array('-nopgbrk','plain'),
-            ) as $mode ) {
-                $candidate = $this->run_pdftotext($binary,$path,$mode[0]);
-                $attempts[] = $mode[1].':'.strlen($candidate);
-                if ( strlen($candidate) > strlen($text) ) $text = $candidate;
-                if ( $this->looks_like_credit_report($candidate) ) break;
-            }
-        }
-
-        /* Some browser-generated PDFs expose useful strings even when Poppler returns
-           almost no text. This fallback never executes PDF content; it only scans bytes. */
-        if ( ! $this->looks_like_credit_report($text) ) {
-            $strings = $this->extract_printable_strings($path);
-            $attempts[] = 'strings:'.strlen($strings);
-            if ( strlen($strings) > strlen($text) ) $text = $strings;
-        }
-
-        $text = $this->clean_text($text);
-        if ( strlen($text) < 120 || ! $this->looks_like_credit_report($text) ) {
-            return new WP_Error(
-                'creditos_pdf_needs_ocr',
-                'CreditOS could not recover enough structured text from this PDF. OCR fallback is required. Extraction attempts: '.implode(', ',$attempts)
-            );
-        }
-
-        $detected = $this->detect_bureau($text,$bureau);
-        $normalized = $this->normalize_text($text,$detected);
-        return array(
-            'status'=>'normalized','bureau'=>$detected,'text_length'=>strlen($text),
-            'page_count_hint'=>max(1,substr_count($text,"\f")+1),'text'=>$text,
-            'normalized'=>$normalized,
-        );
-    }
-
-    private function run_pdftotext( $binary, $path, $mode ) {
-        $tmp = wp_tempnam('creditos-report.txt');
-        if ( ! $tmp ) return '';
-        $flag = in_array($mode,array('-layout','-raw','-nopgbrk'),true) ? $mode : '-layout';
-        $cmd = escapeshellarg($binary).' '.$flag.' -enc UTF-8 '.escapeshellarg($path).' '.escapeshellarg($tmp).' 2>&1';
-        $out=array(); $code=1;
-        @exec($cmd,$out,$code);
-        $text = (0===$code && file_exists($tmp)) ? (string)file_get_contents($tmp) : '';
-        @unlink($tmp);
-        return $this->clean_text($text);
-    }
-
-    private function extract_printable_strings( $path ) {
-        $data = @file_get_contents($path);
-        if ( false === $data || '' === $data ) return '';
-        preg_match_all('/[\x20-\x7E]{5,}/',$data,$m);
-        return $this->clean_text(implode("\n",$m[0]??array()));
-    }
-
-    private function looks_like_credit_report( $text ) {
-        if ( strlen((string)$text) < 120 ) return false;
-        $needles=array('Account Name','Account Number','Annual Credit Report','Experian','Equifax','TransUnion','Credit Report');
-        $hits=0; foreach($needles as $n) if(false!==stripos($text,$n)) $hits++;
-        return $hits >= 2 || (false!==stripos($text,'Account Name') && false!==stripos($text,'Balance'));
-    }
-
-    private function parse_csv( $path, $bureau ) {
-        $h=fopen($path,'r'); if(!$h) return new WP_Error('creditos_csv_open','CreditOS could not read the CSV report.');
-        $header=fgetcsv($h); if(!is_array($header)){fclose($h);return new WP_Error('creditos_csv_header','The CSV report does not contain a readable header.');}
-        $header=array_map(array($this,'key'),$header); $tradelines=array();
-        while(($row=fgetcsv($h))!==false){$row=array_pad($row,count($header),'');$r=array_combine($header,array_slice($row,0,count($header)));if(!$r)continue;$creditor=$r['creditor_name']??$r['creditor']??$r['account_name']??'';if(!$creditor)continue;$tradelines[]=array('creditor_name'=>$creditor,'bureau'=>$r['bureau']??$bureau,'account_number_masked'=>$r['account_number_masked']??$r['account_number']??'','account_type'=>$r['account_type']??'','balance'=>$this->number($r['balance']??null),'credit_limit'=>$this->number($r['credit_limit']??$r['limit']??null),'past_due'=>$this->number($r['past_due']??null),'status'=>$r['status']??'','payment_status'=>$r['payment_status']??'','opened_date'=>$r['opened_date']??'','date_reported'=>$r['date_reported']??'','remarks'=>$r['remarks']??'');}
-        fclose($h); return array('status'=>'normalized','bureau'=>$bureau,'normalized'=>array('tradelines'=>$tradelines,'collections'=>array(),'inquiries'=>array(),'personal_information'=>array()));
-    }
-
-    private function find_pdftotext(){foreach(array('/usr/bin/pdftotext','/usr/local/bin/pdftotext')as$p)if(is_executable($p))return$p;return false;}
-    private function clean_text($text){$text=str_replace("\0",'',(string)$text);$text=preg_replace("/\r\n?|\r/","\n",$text);$text=preg_replace('/[ \t]+/',' ',$text);$text=preg_replace('/\n{4,}/',"\n\n",$text);return trim($text);}
-
-    private function detect_bureau($text,$fallback){if(false!==stripos($text,'Annual Credit Report - Experian')||false!==stripos($text,'usa.experian.com/acr/')||false!==stripos($text,'Prepared For')&&false!==stripos($text,'Experian'))return'experian';if(false!==stripos($text,'Equifax')&&false===stripos($text,'Experian'))return'equifax';if(false!==stripos($text,'TransUnion')&&false===stripos($text,'Experian'))return'transunion';return in_array($fallback,array('experian','equifax','transunion','multi'),true)?$fallback:'multi';}
-    private function normalize_text($text,$bureau){if('experian'===$bureau||false!==stripos($text,'Annual Credit Report - Experian'))return $this->normalize_experian($text);return array('tradelines'=>array(),'collections'=>array(),'inquiries'=>array(),'personal_information'=>$this->parse_basic_personal($text,$bureau));}
-
-    private function normalize_experian($text){
-        $tradelines=array(); $personal=$this->parse_basic_personal($text,'experian');
-        $pattern='/(?:^|\n)Account Name\s+(.+?)(?=\nAccount Name\s+|\n(?:Hard Inquiries|Soft Inquiries|Public Records|Consumer Statements|Personal Information)\b|\z)/si';
-        if(preg_match_all($pattern,$text,$matches,PREG_SET_ORDER))foreach($matches as$m){$block="Account Name ".trim($m[1]);$name=$this->field($block,'Account Name',array('Account Number'));if(!$name)continue;$status=$this->field($block,'Status',array('Status Updated'));$tradelines[]=array('creditor_name'=>$name,'bureau'=>'experian','account_number_masked'=>$this->field($block,'Account Number',array('Account Type')),'account_type'=>$this->field($block,'Account Type',array('Responsibility')),'responsibility'=>$this->field($block,'Responsibility',array('Interest Type','Date Opened')),'opened_date'=>$this->field($block,'Date Opened',array('Status')),'status'=>$status,'balance'=>$this->money_field($block,'Balance',array('Balance Updated')),'credit_limit'=>$this->money_field($block,'Credit Limit',array('Highest Balance','Terms','Payment History')),'past_due'=>$this->past_due_from_status($status),'payment_status'=>$this->payment_status_from_block($block,$status),'date_reported'=>$this->field($block,'Balance Updated',array('Recent Payment','Monthly Payment')),'remarks'=>$this->remarks_from_block($block));}
-        return array('tradelines'=>$tradelines,'collections'=>array(),'inquiries'=>$this->parse_experian_hard_inquiries($text),'personal_information'=>$personal);
-    }
-    private function field($block,$label,array$next_labels=array()){$next=$next_labels?'(?=\s*(?:'.implode('|',array_map(function($v){return preg_quote($v,'/');},$next_labels)).')\b|\n|\z)':'(?=\n|\z)';if(preg_match('/(?:^|\n)'.preg_quote($label,'/').'\s+(.+?)'.$next.'/si',$block,$m))return trim(preg_replace('/\s+/',' ',$m[1]));return'';}
-    private function money_field($block,$label,array$next){$v=$this->field($block,$label,$next);if(''===$v||'-'===trim($v))return null;return$this->number($v);}
-    private function past_due_from_status($status){if(preg_match('/\$([0-9,]+(?:\.\d{2})?)\s+past due/i',(string)$status,$m))return$this->number($m[1]);return null;}
-    private function payment_status_from_block($block,$status){if(false!==stripos($status,'charged off'))return'Charge Off';if(preg_match('/\b(30|60|90|120|150|180) days past due\b/i',$block,$m))return$m[1].' Days Past Due';if(false!==stripos($status,'paid')&&false!==stripos($status,'closed'))return'Paid / Closed';if(false!==stripos($status,'open'))return'Open';return$status;}
-    private function remarks_from_block($block){$r=array();if(preg_match('/On Record Until\s+([^\n]+)/i',$block,$m))$r[]='On record until '.trim($m[1]);if(preg_match('/This account is scheduled to continue on record until\s+([^\.\n]+)[\.\n]/i',$block,$m))$r[]='Scheduled through '.trim($m[1]);return implode('; ',array_unique($r));}
-    private function parse_basic_personal($text,$bureau){$out=array();if(preg_match('/Prepared For\s*\n?\s*([^\n]{3,80})/i',$text,$m))$out[]=array('info_type'=>'name','info_value'=>trim($m[1]),'bureau'=>$bureau);if(preg_match('/Date Generated\s+([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})/i',$text,$m))$out[]=array('info_type'=>'report_date','info_value'=>trim($m[1]),'bureau'=>$bureau);return$out;}
-    private function parse_experian_hard_inquiries($text){if(preg_match('/\b0\s+Hard Inquiries\b/i',$text))return array();return array();}
-    public function safe_excerpt($text,$limit=800){$text=preg_replace('/\b\d{3}-\d{2}-\d{4}\b/','***-**-****',(string)$text);$text=preg_replace('/\b\d{9,16}\b/','********',$text);return mb_substr($text,0,$limit);}
-    private function key($value){return sanitize_key(str_replace(array(' ','-'),'_',strtolower(trim((string)$value))));}
-    private function number($value){if(null===$value||''===$value)return null;$v=preg_replace('/[^0-9.\-]/','',(string)$value);return is_numeric($v)?(float)$v:null;}
+if(!defined('ABSPATH'))exit;
+class CreditOS_Report_Parser{
+ public function parse($path,$format,$bureau='multi'){if(!$path||!file_exists($path))return new WP_Error('creditos_parser_file_missing','The uploaded credit report file could not be found.');$format=strtolower((string)$format);if('pdf'===$format)return$this->parse_pdf($path,$bureau);if('csv'===$format)return$this->parse_csv($path,$bureau);return new WP_Error('creditos_parser_format','Unsupported parser format.');}
+ private function parse_pdf($path,$bureau){$attempts=array();$candidates=array();$bin=$this->find_pdftotext();if($bin)foreach(array(array('-layout','layout'),array('-raw','raw'),array('-nopgbrk','plain'))as$m){$t=$this->run_pdftotext($bin,$path,$m[0]);$attempts[]=$m[1].':'.strlen($t);if($t)$candidates[$m[1]]=$t;} $s=$this->extract_printable_strings($path);if($s){$attempts[]='strings:'.strlen($s);$candidates['strings']=$s;}if(!$candidates)return new WP_Error('creditos_pdf_needs_ocr','CreditOS could not recover readable PDF text.');
+  /* Prefer the extraction that produces the most usable normalized records, not merely the longest text. */
+  $best=null;$bestScore=-1;foreach($candidates as$method=>$text){$text=$this->clean_text($text);if(!$this->looks_like_credit_report($text))continue;$det=$this->detect_bureau($text,$bureau);$norm=$this->normalize_text($text,$det);$score=count($norm['tradelines']??array())*100+count($norm['personal_information']??array())*10+count($norm['inquiries']??array());if($score>$bestScore){$bestScore=$score;$best=array('method'=>$method,'text'=>$text,'bureau'=>$det,'normalized'=>$norm);}}
+  if(!$best)return new WP_Error('creditos_pdf_needs_ocr','CreditOS could not recover enough structured text from this PDF. Extraction attempts: '.implode(', ',$attempts));
+  return array('status'=>'normalized','bureau'=>$best['bureau'],'text_length'=>strlen($best['text']),'extraction_method'=>$best['method'],'normalized'=>$best['normalized']);}
+ private function normalize_text($text,$bureau){if('experian'===$bureau||false!==stripos($text,'Experian'))return$this->normalize_experian($text);return array('tradelines'=>array(),'collections'=>array(),'inquiries'=>array(),'personal_information'=>$this->parse_basic_personal($text,$bureau));}
+ private function normalize_experian($text){$tradelines=array();$blocks=$this->account_blocks($text);foreach($blocks as$block){$name=$this->value_after_label($block,'Account Name',array('Account Number','Account Type'));if(!$name)continue;$status=$this->value_after_label($block,'Status',array('Status Updated','Balance','Balance Updated'));$tradelines[]=array('creditor_name'=>$name,'bureau'=>'experian','account_number_masked'=>$this->value_after_label($block,'Account Number',array('Account Type','Responsibility')),'account_type'=>$this->value_after_label($block,'Account Type',array('Responsibility','Date Opened')),'responsibility'=>$this->value_after_label($block,'Responsibility',array('Date Opened','Status')),'opened_date'=>$this->value_after_label($block,'Date Opened',array('Status','Status Updated')),'status'=>$status,'balance'=>$this->money_value($block,'Balance',array('Balance Updated','Credit Limit','Highest Balance')),'credit_limit'=>$this->money_value($block,'Credit Limit',array('Highest Balance','Terms','Payment History')),'past_due'=>$this->past_due($status),'payment_status'=>$this->payment_status($block,$status),'date_reported'=>$this->value_after_label($block,'Balance Updated',array('Recent Payment','Monthly Payment','Credit Limit')),'remarks'=>$this->remarks($block));}
+  return array('tradelines'=>$tradelines,'collections'=>array(),'inquiries'=>$this->parse_hard_inquiries($text),'personal_information'=>$this->parse_basic_personal($text,'experian'));}
+ private function account_blocks($text){$blocks=array();$pattern='/Account\s+Name\s*[:\-]?\s*/i';if(!preg_match_all($pattern,$text,$m,PREG_OFFSET_CAPTURE))return$blocks;$hits=$m[0];for($i=0;$i<count($hits);$i++){$start=$hits[$i][1];$end=$i+1<count($hits)?$hits[$i+1][1]:strlen($text);$b=substr($text,$start,$end-$start);if(strlen($b)>20)$blocks[]=$b;}return$blocks;}
+ private function value_after_label($block,$label,$next=array()){$labels=$next?implode('|',array_map(fn($v)=>preg_quote($v,'/'),$next)):'$';$p='/'.preg_quote($label,'/').'\s*[:\-]?\s*(.+?)(?=\s+(?:'.$labels.')\s*[:\-]?|\n|$)/is';if(preg_match($p,$block,$m)){return trim(preg_replace('/\s+/',' ',$m[1]));}return'';}
+ private function money_value($b,$l,$n){$v=$this->value_after_label($b,$l,$n);return$this->number($v);}
+ private function past_due($s){return preg_match('/\$([0-9,]+(?:\.\d{2})?)\s+past due/i',(string)$s,$m)?$this->number($m[1]):null;}
+ private function payment_status($b,$s){if(stripos($s,'charged off')!==false)return'Charge Off';if(preg_match('/\b(30|60|90|120|150|180) days past due\b/i',$b,$m))return$m[1].' Days Past Due';if(stripos($s,'paid')!==false&&stripos($s,'closed')!==false)return'Paid / Closed';return$s;}
+ private function remarks($b){$r=array();if(preg_match('/On Record Until\s+([^\n]+)/i',$b,$m))$r[]=trim($m[1]);return implode('; ',array_unique($r));}
+ private function parse_basic_personal($t,$b){$o=array();if(preg_match('/Prepared For\s*[:\-]?\s*\n?\s*([^\n]{3,80})/i',$t,$m))$o[]=array('info_type'=>'name','info_value'=>trim($m[1]),'bureau'=>$b);if(preg_match('/Date Generated\s*[:\-]?\s*([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})/i',$t,$m))$o[]=array('info_type'=>'report_date','info_value'=>trim($m[1]),'bureau'=>$b);return$o;}
+ private function parse_hard_inquiries($t){if(preg_match('/\b0\s+Hard Inquiries\b/i',$t))return array();return array();}
+ private function looks_like_credit_report($t){if(strlen((string)$t)<120)return false;$hits=0;foreach(array('Account Name','Account Number','Experian','Equifax','TransUnion','Credit Report','Prepared For')as$n)if(stripos($t,$n)!==false)$hits++;return$hits>=2;}
+ private function detect_bureau($t,$f){if(stripos($t,'Annual Credit Report - Experian')!==false||stripos($t,'usa.experian.com/acr/')!==false||(stripos($t,'Prepared For')!==false&&stripos($t,'Experian')!==false))return'experian';if(stripos($t,'Equifax')!==false&&stripos($t,'Experian')===false)return'equifax';if(stripos($t,'TransUnion')!==false&&stripos($t,'Experian')===false)return'transunion';return in_array($f,array('experian','equifax','transunion','multi'),true)?$f:'multi';}
+ private function run_pdftotext($bin,$path,$mode){$tmp=wp_tempnam('creditos.txt');if(!$tmp)return'';$cmd=escapeshellarg($bin).' '.escapeshellarg($mode).' -enc UTF-8 '.escapeshellarg($path).' '.escapeshellarg($tmp).' 2>&1';$o=array();$c=1;@exec($cmd,$o,$c);$t=0===$c&&file_exists($tmp)?file_get_contents($tmp):'';@unlink($tmp);return$this->clean_text($t);}
+ private function extract_printable_strings($p){$d=@file_get_contents($p);if(!$d)return'';preg_match_all('/[\x20-\x7E]{5,}/',$d,$m);return$this->clean_text(implode("\n",$m[0]??array()));}
+ private function clean_text($t){$t=str_replace("\0",'',(string)$t);$t=preg_replace("/\r\n?|\r/","\n",$t);$t=preg_replace('/[ \t]+/',' ',$t);return trim($t);}
+ private function parse_csv($p,$b){$h=fopen($p,'r');if(!$h)return new WP_Error('creditos_csv_open','Could not read CSV.');$head=fgetcsv($h);if(!$head){fclose($h);return new WP_Error('creditos_csv_header','Unreadable CSV header.');}$head=array_map(fn($v)=>sanitize_key(str_replace(array(' ','-'),'_',strtolower(trim($v)))),$head);$rows=array();while(($x=fgetcsv($h))!==false){$x=array_pad($x,count($head),'');$r=array_combine($head,array_slice($x,0,count($head)));$name=$r['creditor_name']??$r['creditor']??$r['account_name']??'';if($name)$rows[]=array('creditor_name'=>$name,'bureau'=>$r['bureau']??$b,'account_number_masked'=>$r['account_number']??'','account_type'=>$r['account_type']??'','balance'=>$this->number($r['balance']??null),'credit_limit'=>$this->number($r['credit_limit']??null),'status'=>$r['status']??'');}fclose($h);return array('status'=>'normalized','bureau'=>$b,'normalized'=>array('tradelines'=>$rows,'collections'=>array(),'inquiries'=>array(),'personal_information'=>array()));}
+ private function find_pdftotext(){foreach(array('/usr/bin/pdftotext','/usr/local/bin/pdftotext')as$p)if(is_executable($p))return$p;return false;}
+ private function number($v){if($v===null||trim((string)$v)==='')return null;$x=preg_replace('/[^0-9.\-]/','',(string)$v);return is_numeric($x)?(float)$x:null;}
+ public function safe_excerpt($t,$limit=800){$t=preg_replace('/\b\d{3}-\d{2}-\d{4}\b/','***-**-****',(string)$t);$t=preg_replace('/\b\d{9,16}\b/','********',$t);return mb_substr($t,0,$limit);}
 }
