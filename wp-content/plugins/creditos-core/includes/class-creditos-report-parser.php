@@ -91,8 +91,18 @@ class CreditOS_Report_Parser {
         return !in_array($name,$disabled,true);
     }
 
+    private function temp_text_file(){
+        $dir = function_exists('wp_upload_dir') ? wp_upload_dir() : array();
+        $base = !empty($dir['basedir']) ? $dir['basedir'] : sys_get_temp_dir();
+        $folder = rtrim($base, '/\\') . DIRECTORY_SEPARATOR . 'creditos-tmp';
+        if(!is_dir($folder)) @wp_mkdir_p($folder);
+        if(!is_dir($folder) || !is_writable($folder)) $folder = sys_get_temp_dir();
+        $tmp = @tempnam($folder, 'creditos_');
+        return $tmp ? $tmp : '';
+    }
+
     private function run_pdftotext($bin,$path,$mode){
-        $tmp=wp_tempnam('creditos.txt'); if(!$tmp)return'';
+        $tmp=$this->temp_text_file(); if(!$tmp)return'';
         $cmd=escapeshellarg($bin).' '.escapeshellarg($mode).' -enc UTF-8 '.escapeshellarg($path).' '.escapeshellarg($tmp);
         $ok=false;
         if($this->function_enabled('proc_open')){
