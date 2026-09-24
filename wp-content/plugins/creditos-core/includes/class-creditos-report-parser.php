@@ -97,7 +97,21 @@ class CreditOS_Report_Parser {
                 'date_reported'=>$this->line_value($block,'Balance Updated'),'remarks'=>$this->remarks($block)
             );
         }
-        return array('tradelines'=>$tradelines,'collections'=>array(),'inquiries'=>$this->parse_hard_inquiries($text),'personal_information'=>$this->parse_basic_personal($text,'experian'));
+        $collections = array();
+        foreach ($tradelines as $line) {
+            $status = (string)($line['status'] ?? '');
+            $type = (string)($line['account_type'] ?? '');
+            if (stripos($status, 'collection account') === false && stripos($type, 'collection') === false && stripos($type, 'debt buyer') === false) continue;
+            $collections[] = array(
+                'collector_name'=>$line['creditor_name'],
+                'original_creditor'=>'',
+                'balance'=>$line['balance'],
+                'assigned_date'=>null,
+                'status'=>$status,
+                'bureau'=>'experian'
+            );
+        }
+        return array('tradelines'=>$tradelines,'collections'=>$collections,'inquiries'=>$this->parse_hard_inquiries($text),'personal_information'=>$this->parse_basic_personal($text,'experian'));
     }
 
     private function account_blocks($text) {
