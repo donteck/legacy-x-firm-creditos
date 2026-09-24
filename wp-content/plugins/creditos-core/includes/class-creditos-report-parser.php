@@ -14,14 +14,17 @@ class CreditOS_Report_Parser {
         $bin = $this->find_pdftotext();
         $text = '';
         $method = 'none';
+        $attempts = array();
 
         // Prefer pdftotext when PHP is allowed to launch a process.
         if ($bin && $this->can_launch_process()) {
             $text = $this->run_pdftotext($bin, $path, '-layout');
             $method = 'pdftotext-layout';
+            $attempts[] = array('method'=>$method,'text_length'=>is_string($text)?strlen($text):0,'usable'=>$this->looks_like_credit_report($text));
             if (!$text || !$this->looks_like_credit_report($text)) {
                 $text = $this->run_pdftotext($bin, $path, '-raw');
                 $method = 'pdftotext-raw';
+                $attempts[] = array('method'=>$method,'text_length'=>is_string($text)?strlen($text):0,'usable'=>$this->looks_like_credit_report($text));
             }
         }
 
@@ -38,6 +41,7 @@ class CreditOS_Report_Parser {
                         if (is_string($candidate) && $candidate !== '') {
                             $text = $this->clean_text($candidate);
                             $method = 'smalot-pdfparser';
+                            $attempts[] = array('method'=>$method,'text_length'=>strlen($text),'usable'=>$this->looks_like_credit_report($text));
                         }
                     } catch (\Throwable $e) {
                         // Continue to the conservative internal fallback.
@@ -50,6 +54,7 @@ class CreditOS_Report_Parser {
         if (!$text || !$this->looks_like_credit_report($text)) {
             $text = $this->extract_pdf_text_php($path);
             $method = 'php-stream';
+            $attempts[] = array('method'=>$method,'text_length'=>is_string($text)?strlen($text):0,'usable'=>$this->looks_like_credit_report($text));
         }
 
         // Allow a future audited extractor/service to plug in without changing
@@ -62,7 +67,10 @@ class CreditOS_Report_Parser {
             }
         }
 
-        if (!$text || !$this->looks_like_credit_report($text)) return new WP_Error('creditos_pdf_needs_ocr', 'CreditOS could not recover enough structured text from this PDF with the extraction methods available on this server.');
+        if (!$text || !$this->looks_like_credit_report($text)) {
+            $summary = array_map(function($a){ return $a['method'].':'.$a['text_length'].':'.($a['usable']?'usable':'unusable'); }, $attempts);
+            return new WP_Error('creditos_pdf_needs_ocr', 'CreditOS could not recover enough structured text from this PDF. Safe extraction diagnostics: '.implode(', ', $summary));
+        }
         $detected = $this->detect_bureau($text, $bureau);
         $normalized = $this->normalize_text($text, $detected);
         return array('status'=>'normalized','bureau'=>$detected,'text_length'=>strlen($text),'extraction_method'=>$method,'account_block_count'=>count($this->account_blocks($text)),'normalized'=>$normalized);
