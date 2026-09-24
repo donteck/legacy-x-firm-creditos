@@ -1,0 +1,9 @@
+{
+  "name": "legacy-x-firm/creditos-core",
+  "description": "Core services for Legacy X Firm CreditOS.",
+  "type": "wordpress-plugin",
+  "require": {
+    "php": ">=8.2",
+    "smalot/pdfparser": "^2.12"
+  }
+}
