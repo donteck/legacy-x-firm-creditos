@@ -25,8 +25,28 @@ class CreditOS_Report_Parser {
             }
         }
 
-        // Hestia may intentionally disable exec/proc_open/shell_exec. In that
-        // environment use a PHP-only extractor rather than weakening PHP security.
+        // Use the bundled Composer PDF engine when shell execution is unavailable.
+        if (!$text || !$this->looks_like_credit_report($text)) {
+            $vendor = dirname(__DIR__) . '/vendor/autoload.php';
+            if (file_exists($vendor)) {
+                require_once $vendor;
+                if (class_exists('Smalot\\PdfParser\\Parser')) {
+                    try {
+                        $parser = new \Smalot\PdfParser\Parser();
+                        $pdf = $parser->parseFile($path);
+                        $candidate = $pdf ? $pdf->getText() : '';
+                        if (is_string($candidate) && $candidate !== '') {
+                            $text = $this->clean_text($candidate);
+                            $method = 'smalot-pdfparser';
+                        }
+                    } catch (\Throwable $e) {
+                        // Continue to the conservative internal fallback.
+                    }
+                }
+            }
+        }
+
+        // Last local fallback for simple text-based PDFs.
         if (!$text || !$this->looks_like_credit_report($text)) {
             $text = $this->extract_pdf_text_php($path);
             $method = 'php-stream';
