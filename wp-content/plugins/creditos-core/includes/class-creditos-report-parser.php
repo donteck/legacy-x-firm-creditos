@@ -182,7 +182,7 @@ class CreditOS_Report_Parser {
                 if($clean){
                     $address=implode(' ',$clean);
                     // Experian may print dwelling/property descriptors immediately before an address.
-                    $address=preg_replace('/^(?:Apartment complex|Single family|Multifamily|Multi-family|Condominium|Townhouse)\\s+/i','',$address);
+                    $address=preg_replace('/^(?:Apartment complex|complex|Single family|Multifamily|Multi-family|Condominium|Townhouse)\\s+/i','',$address);
                     $add('address',$address);
                 }
             }
