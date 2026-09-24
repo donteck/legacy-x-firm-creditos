@@ -56,8 +56,11 @@ class CreditOS_Report_Import {
             if(!empty($parsed['bureau']))$this->wpdb->update($t,array('bureau'=>sanitize_key($parsed['bureau'])),array('id'=>$rid,'client_id'=>$cid));
             $payload=is_array($parsed['normalized']??null)?$parsed['normalized']:array(); $result=$this->apply_normalized_payload($rid,$cid,$payload); if($result)$this->repository->audit(get_current_user_id(),$cid,'credit_report_parsed','credit_report',$rid,array('bureau'=>$parsed['bureau']??$bureau,'text_length'=>$parsed['text_length']??0)); return $result;
         }catch(Throwable $e){
-            $this->mark_failed($rid,$cid,'CreditOS could not complete report processing. The report is safe and can be reprocessed after parser review.');
-            $this->repository->audit(get_current_user_id(),$cid,'credit_report_processing_exception','credit_report',$rid,array('exception_class'=>get_class($e)));
+            $safe_class = sanitize_text_field(get_class($e));
+            $safe_message = sanitize_text_field($e->getMessage());
+            if (strlen($safe_message) > 240) $safe_message = substr($safe_message, 0, 240) . '…';
+            $this->mark_failed($rid,$cid,'CreditOS parser exception ['.$safe_class.']: '.$safe_message);
+            $this->repository->audit(get_current_user_id(),$cid,'credit_report_processing_exception','credit_report',$rid,array('exception_class'=>$safe_class));
             return false;
         }
     }
