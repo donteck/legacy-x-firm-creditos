@@ -98,17 +98,20 @@ class CreditOS_Report_Parser {
             );
         }
         $collections = array();
-        foreach ($tradelines as $line) {
-            $status = (string)($line['status'] ?? '');
-            $type = (string)($line['account_type'] ?? '');
-            $remarks = (string)($line['remarks'] ?? '');
-            $payment = (string)($line['payment_status'] ?? '');
-            $classification = $status . ' ' . $remarks . ' ' . $payment;
-            if (stripos($classification, 'collection account') === false && stripos($type, 'collection') === false && stripos($type, 'debt buyer') === false) continue;
+        $seen_collections = array();
+        foreach ($this->account_blocks($text) as $block) {
+            $name = $this->line_value($block, 'Account Name');
+            $type = $this->line_value($block, 'Account Type');
+            $status = $this->multiline_value($block, 'Status', array('Status Updated','Balance','Balance Updated'), 3);
+            $is_collection = stripos($block, 'Collection account') !== false || stripos($type, 'collection') !== false || stripos($type, 'debt buyer') !== false;
+            if (!$name || !$is_collection) continue;
+            $key = strtolower(trim($name . '|' . $this->line_value($block, 'Account Number')));
+            if (isset($seen_collections[$key])) continue;
+            $seen_collections[$key] = true;
             $collections[] = array(
-                'collector_name'=>$line['creditor_name'],
+                'collector_name'=>$name,
                 'original_creditor'=>'',
-                'balance'=>$line['balance'],
+                'balance'=>$this->number($this->line_value($block,'Balance')),
                 'assigned_date'=>null,
                 'status'=>$status,
                 'bureau'=>'experian'
