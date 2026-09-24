@@ -12,14 +12,37 @@ class CreditOS_Report_Parser {
 
     private function parse_pdf($path, $bureau) {
         $bin = $this->find_pdftotext();
-        if (!$bin) return new WP_Error('creditos_pdf_needs_ocr', 'PDF text extraction is not available on this server.');
-        $text = $this->run_pdftotext($bin, $path, '-layout');
-        $method = 'layout';
-        if (!$text || !$this->looks_like_credit_report($text)) {
-            $text = $this->run_pdftotext($bin, $path, '-raw');
-            $method = 'raw';
+        $text = '';
+        $method = 'none';
+
+        // Prefer pdftotext when PHP is allowed to launch a process.
+        if ($bin && $this->can_launch_process()) {
+            $text = $this->run_pdftotext($bin, $path, '-layout');
+            $method = 'pdftotext-layout';
+            if (!$text || !$this->looks_like_credit_report($text)) {
+                $text = $this->run_pdftotext($bin, $path, '-raw');
+                $method = 'pdftotext-raw';
+            }
         }
-        if (!$text || !$this->looks_like_credit_report($text)) return new WP_Error('creditos_pdf_needs_ocr', 'CreditOS could not recover enough structured text from this PDF.');
+
+        // Hestia may intentionally disable exec/proc_open/shell_exec. In that
+        // environment use a PHP-only extractor rather than weakening PHP security.
+        if (!$text || !$this->looks_like_credit_report($text)) {
+            $text = $this->extract_pdf_text_php($path);
+            $method = 'php-stream';
+        }
+
+        // Allow a future audited extractor/service to plug in without changing
+        // normalization code. Never expose the extracted report text in diagnostics.
+        if ((!$text || !$this->looks_like_credit_report($text)) && function_exists('apply_filters')) {
+            $filtered = apply_filters('creditos_pdf_extract_text', '', $path, $bureau);
+            if (is_string($filtered) && $filtered !== '') {
+                $text = $this->clean_text($filtered);
+                $method = 'provider-filter';
+            }
+        }
+
+        if (!$text || !$this->looks_like_credit_report($text)) return new WP_Error('creditos_pdf_needs_ocr', 'CreditOS could not recover enough structured text from this PDF with the extraction methods available on this server.');
         $detected = $this->detect_bureau($text, $bureau);
         $normalized = $this->normalize_text($text, $detected);
         return array('status'=>'normalized','bureau'=>$detected,'text_length'=>strlen($text),'extraction_method'=>$method,'account_block_count'=>count($this->account_blocks($text)),'normalized'=>$normalized);
@@ -89,6 +112,70 @@ class CreditOS_Report_Parser {
         if(!function_exists($name)) return false;
         $disabled=array_map('trim',explode(',',(string)ini_get('disable_functions')));
         return !in_array($name,$disabled,true);
+    }
+
+    private function can_launch_process(){
+        return $this->function_enabled('proc_open') || $this->function_enabled('exec') || $this->function_enabled('shell_exec');
+    }
+
+    /**
+     * Conservative PHP-only PDF text fallback for text-based PDFs.
+     * It decodes unencrypted Flate streams and extracts literal/hex strings used
+     * by common PDF text operators. It is intentionally not an OCR engine.
+     */
+    private function extract_pdf_text_php($path){
+        $pdf=@file_get_contents($path);
+        if(!is_string($pdf)||$pdf==='') return '';
+        // Do not attempt to bypass encrypted/password-protected reports.
+        if(preg_match('/\/Encrypt\b/',$pdf)) return '';
+
+        $chunks=array();
+        if(preg_match_all('/stream\R(.*?)\Rendstream/s',$pdf,$streams)){
+            foreach($streams[1] as$stream){
+                $decoded=$stream;
+                $try=@gzuncompress($stream);
+                if($try===false) $try=@gzinflate($stream);
+                if($try===false && strlen($stream)>2) $try=@gzinflate(substr($stream,2));
+                if(is_string($try)&&$try!=='') $decoded=$try;
+                $text=$this->pdf_text_operators($decoded);
+                if($text!=='') $chunks[]=$text;
+            }
+        }
+        // Some simple PDFs keep text operators outside compressed streams.
+        $outer=$this->pdf_text_operators($pdf);
+        if($outer!=='') $chunks[]=$outer;
+        return $this->clean_text(implode("\n",$chunks));
+    }
+
+    private function pdf_text_operators($data){
+        if(!is_string($data)||$data==='') return '';
+        $out=array();
+        // Literal strings followed by Tj, quote operators, or inside TJ arrays.
+        if(preg_match_all('/\((?:\\.|[^\\)])*\)/s',$data,$m)){
+            foreach($m[0] as$token){
+                $v=substr($token,1,-1);
+                $v=preg_replace_callback('/\\([0-7]{1,3})/',function($x){return chr(octdec($x[1]));},$v);
+                $v=str_replace(array('\\n','\\r','\\t','\\b','\\f','\\(','\\)','\\\\'),array("\n","\r","\t","\b","\f",'(',')','\\'),$v);
+                if($this->printable_ratio($v)>=0.75) $out[]=$v;
+            }
+        }
+        // Hex strings are common in generated reports. Decode only readable text;
+        // font-specific glyph maps remain the job of a dedicated extractor.
+        if(preg_match_all('/<([0-9A-Fa-f]{4,})>/',$data,$hex)){
+            foreach($hex[1] as$h){
+                if(strlen($h)%2) $h.='0';
+                $v=@hex2bin($h);
+                if(is_string($v)&&$this->printable_ratio($v)>=0.80) $out[]=$v;
+            }
+        }
+        return implode("\n",$out);
+    }
+
+    private function printable_ratio($value){
+        $len=strlen((string)$value);
+        if(!$len) return 0;
+        $print=preg_match_all('/[\x09\x0A\x0D\x20-\x7E]/',(string)$value,$m);
+        return $print/$len;
     }
 
     private function temp_text_file(){
