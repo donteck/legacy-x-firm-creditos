@@ -23,7 +23,9 @@ class CreditOS_Report_Import {
         $table=$this->wpdb->prefix.'creditos_tradelines';
         $required=array(
             'status_updated'=>"DATE NULL AFTER status",
-            'balance_updated'=>"DATE NULL AFTER payment_status"
+            'balance_updated'=>"DATE NULL AFTER payment_status",
+            'review_status'=>"VARCHAR(30) NOT NULL DEFAULT 'needs_review' AFTER responsibility",
+            'reviewer_notes'=>"TEXT NULL AFTER review_status"
         );
         foreach($required as $column=>$definition){
             $exists=$this->wpdb->get_var($this->wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",$column));
@@ -37,6 +39,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'get_report'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/normalized',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'save_normalized'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/reprocess',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'reprocess_report'),'permission_callback'=>array($this,'logged_in')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/diagnostics',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'diagnostics'),'permission_callback'=>array($this,'staff_only')));
     }
     public function logged_in(){return is_user_logged_in();}
@@ -81,6 +84,19 @@ class CreditOS_Report_Import {
     private function mark_failed($rid,$cid,$message){$this->wpdb->update($this->wpdb->prefix.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>$message,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));}
 
     public function reprocess_report(WP_REST_Request $request){$c=$this->current_client();if(!$c)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));$rid=absint($request['id']);$p=$this->wpdb->prefix;$row=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$c->id),ARRAY_A);if(!$row)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));$path=get_attached_file(absint($row['source_attachment_id']));$ok=$this->process_report($rid,$c->id,$path,$row['source_format'],$row['bureau']);return rest_ensure_response(array('success'=>(bool)$ok,'report'=>$this->report_payload($rid,$c->id)));}
+
+    public function review_tradeline(WP_REST_Request $request){
+        $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
+        $rid=absint($request['id']); $tid=absint($request['tradeline_id']); $data=$request->get_json_params();
+        $allowed=array('verified','needs_review','potential_inaccuracy','missing_evidence','ignore'); $status=sanitize_key($data['review_status']??'needs_review');
+        if(!in_array($status,$allowed,true))return new WP_Error('creditos_review_status_invalid','Choose a valid review status.',array('status'=>400));
+        $table=$this->wpdb->prefix.'creditos_tradelines'; $exists=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$table} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id));
+        if(!$exists)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));
+        $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>sanitize_textarea_field($data['reviewer_notes']??'')),array('id'=>$tid,'report_id'=>$rid,'client_id'=>$client->id));
+        if(false===$ok)return new WP_Error('creditos_review_save_failed','The account review could not be saved.',array('status'=>500));
+        $this->repository->audit(get_current_user_id(),$client->id,'tradeline_review_saved','tradeline',$tid,array('report_id'=>$rid,'review_status'=>$status));
+        return rest_ensure_response(array('success'=>true,'review_status'=>$status));
+    }
 
     public function diagnostics(){ $disabled=array_map('trim',explode(',',(string)ini_get('disable_functions'))); return rest_ensure_response(array('php'=>PHP_VERSION,'exec_available'=>function_exists('exec')&&!in_array('exec',$disabled,true),'pdftotext_usr_bin'=>is_executable('/usr/bin/pdftotext'),'pdftotext_usr_local'=>is_executable('/usr/local/bin/pdftotext'),'upload_dir_writable'=>wp_is_writable(wp_upload_dir()['basedir']),'core_version'=>defined('CREDITOS_CORE_VERSION')?CREDITOS_CORE_VERSION:'')); }
 
