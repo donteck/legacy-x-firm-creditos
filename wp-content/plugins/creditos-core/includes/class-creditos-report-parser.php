@@ -92,8 +92,10 @@ class CreditOS_Report_Parser {
                 'creditor_name'=>$name,'bureau'=>'experian','account_number_masked'=>$number,
                 'account_type'=>$this->line_value($block,'Account Type'),'responsibility'=>$this->line_value($block,'Responsibility'),
                 'opened_date'=>$this->line_value($block,'Date Opened'),'status'=>$status,
+                'status_updated'=>$this->line_value($block,'Status Updated'),
                 'balance'=>$this->number($this->line_value($block,'Balance')),'credit_limit'=>$this->number($this->line_value($block,'Credit Limit')),
                 'past_due'=>$this->past_due($status),'payment_status'=>$this->payment_status($block,$status),
+                'balance_updated'=>$this->line_value($block,'Balance Updated'),
                 'date_reported'=>$this->line_value($block,'Balance Updated'),'remarks'=>$this->remarks($block)
             );
         }
