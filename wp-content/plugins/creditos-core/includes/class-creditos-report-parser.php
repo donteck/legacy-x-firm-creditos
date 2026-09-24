@@ -163,24 +163,21 @@ class CreditOS_Report_Parser {
         };
         if(preg_match('/Prepared For\\s*[:\\-]?\\s*\\n?\\s*([^\\n]{3,80})/i',$text,$m))$add('name',$m[1]);
         if(preg_match('/Date Generated\\s*[:\\-]?\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4})/i',$text,$m))$add('report_date',$m[1]);
-        $personal=$text;
-        $account_pos=stripos($personal,'Account Name');
-        if($account_pos!==false)$personal=substr($personal,0,$account_pos);
-        if(preg_match('/\\bNames\\s*(.*?)\\s*Addresses\\b/is',$personal,$m)){
-            if(preg_match_all('/(?:^|\\n)\\s*([^\\n]{2,80})\\s*\\n\\s*Name ID\\s*#?[^\\n]*/i',$m[1],$names))
-                foreach($names[1] as$value)$add('name',$value);
-        }
-        if(preg_match('/\\bAddresses\\s*(.*?)(?:\\bEmployers\\b|\\bOther Records\\b|$)/is',$personal,$m)){
-            if(preg_match_all('/((?:(?!Address ID)[^\\n]+\\n){1,5})\\s*Address ID\\s*\\n?\\s*#?[^\\n]*/i',$m[1],$addresses))
-                foreach($addresses[1] as$value)$add('address',$value);
-        }
-        if(preg_match('/\\bEmployers\\s*(.*?)(?:\\bOther Records\\b|$)/is',$personal,$m)){
-            $section=trim($m[1]);
-            if($section!==''&&!preg_match('/^0\\s*$/',$section)){
-                foreach(preg_split('/\\n+/',$section) as$value){
-                    $value=trim($value);
-                    if($value!==''&&!preg_match('/^(Employer ID|#)/i',$value))$add('employer',$value);
+
+        // Experian ACR identity records are identified reliably by their ID labels.
+        if(preg_match_all('/(?:^|\\n)\\s*([^\\n]{2,80})\\s*\\n\\s*Name ID\\s*#?[^\\n]*/i',$text,$names))
+            foreach($names[1] as$value)$add('name',$value);
+
+        if(preg_match_all('/((?:(?!Address ID)[^\\n]+\\n){1,5})\\s*Address ID\\s*\\n?\\s*#?[^\\n]*/i',$text,$addresses)){
+            foreach($addresses[1] as$value){
+                $lines=preg_split('/\\n+/',trim($value));
+                $clean=array();
+                foreach($lines as$line){
+                    $line=trim($line);
+                    if($line===''||preg_match('/^(Names|Addresses|Employers|Other Records|At a Glance|\\d+\\s+\\d+\\s+\\d+\\s+\\d+)$/i',$line))continue;
+                    $clean[]=$line;
                 }
+                if($clean)$add('address',implode(' ',$clean));
             }
         }
         return$out;
