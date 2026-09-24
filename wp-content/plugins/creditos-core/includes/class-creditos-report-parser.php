@@ -177,7 +177,12 @@ class CreditOS_Report_Parser {
                     if($line===''||preg_match('/^(Names|Addresses|Employers|Other Records|At a Glance|\\d+\\s+\\d+\\s+\\d+\\s+\\d+)$/i',$line))continue;
                     $clean[]=$line;
                 }
-                if($clean)$add('address',implode(' ',$clean));
+                if($clean){
+                    $address=implode(' ',$clean);
+                    // Experian may print dwelling/property descriptors immediately before an address.
+                    $address=preg_replace('/^(?:Apartment complex|Single family|Multifamily|Multi-family|Condominium|Townhouse)\\s+/i','',$address);
+                    $add('address',$address);
+                }
             }
         }
         return$out;
