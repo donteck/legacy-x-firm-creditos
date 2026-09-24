@@ -154,7 +154,7 @@ class CreditOS_Report_Parser {
         if(preg_match_all('/\((?:\\.|[^\\)])*\)/s',$data,$m)){
             foreach($m[0] as$token){
                 $v=substr($token,1,-1);
-                $v=preg_replace_callback('/\\([0-7]{1,3})/',function($x){return chr(octdec($x[1]));},$v);
+                $v=preg_replace_callback('/\\\\([0-7]{1,3})/',function($x){return chr(octdec($x[1]));},$v);
                 $v=str_replace(array('\\n','\\r','\\t','\\b','\\f','\\(','\\)','\\\\'),array("\n","\r","\t","\b","\f",'(',')','\\'),$v);
                 if($this->printable_ratio($v)>=0.75) $out[]=$v;
             }
