@@ -151,7 +151,40 @@ class CreditOS_Report_Parser {
     private function past_due($status){return preg_match('/\$([0-9,]+(?:\.\d{2})?)\s+past due/i',(string)$status,$m)?$this->number($m[1]):null;}
     private function payment_status($block,$status){if(stripos($status,'charged off')!==false)return'Charge Off';if(preg_match('/\b(30|60|90|120|150|180) days past due\b/i',$block,$m))return$m[1].' Days Past Due';if(stripos($status,'paid')!==false&&stripos($status,'closed')!==false)return'Paid / Closed';if(stripos($status,'open')!==false)return'Open';return$status;}
     private function remarks($block){$r=array();$until=$this->line_value($block,'On Record Until');if($until)$r[]='On Record Until '.$until;return implode('; ',array_unique($r));}
-    private function parse_basic_personal($text,$bureau){$out=array();if(preg_match('/Prepared For\s*[:\-]?\s*\n?\s*([^\n]{3,80})/i',$text,$m))$out[]=array('info_type'=>'name','info_value'=>trim($m[1]),'bureau'=>$bureau);if(preg_match('/Date Generated\s*[:\-]?\s*([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})/i',$text,$m))$out[]=array('info_type'=>'report_date','info_value'=>trim($m[1]),'bureau'=>$bureau);return$out;}
+    private function parse_basic_personal($text,$bureau){
+        $out=array(); $seen=array();
+        $add=function($type,$value)use(&$out,&$seen,$bureau){
+            $value=trim(preg_replace('/\\s+/',' ',(string)$value));
+            if($value==='')return;
+            $key=strtolower($type.'|'.$value);
+            if(isset($seen[$key]))return;
+            $seen[$key]=true;
+            $out[]=array('info_type'=>$type,'info_value'=>$value,'bureau'=>$bureau);
+        };
+        if(preg_match('/Prepared For\\s*[:\\-]?\\s*\\n?\\s*([^\\n]{3,80})/i',$text,$m))$add('name',$m[1]);
+        if(preg_match('/Date Generated\\s*[:\\-]?\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4})/i',$text,$m))$add('report_date',$m[1]);
+        $personal=$text;
+        $account_pos=stripos($personal,'Account Name');
+        if($account_pos!==false)$personal=substr($personal,0,$account_pos);
+        if(preg_match('/\\bNames\\s*(.*?)\\s*Addresses\\b/is',$personal,$m)){
+            if(preg_match_all('/(?:^|\\n)\\s*([^\\n]{2,80})\\s*\\n\\s*Name ID\\s*#?[^\\n]*/i',$m[1],$names))
+                foreach($names[1] as$value)$add('name',$value);
+        }
+        if(preg_match('/\\bAddresses\\s*(.*?)(?:\\bEmployers\\b|\\bOther Records\\b|$)/is',$personal,$m)){
+            if(preg_match_all('/((?:(?!Address ID)[^\\n]+\\n){1,5})\\s*Address ID\\s*\\n?\\s*#?[^\\n]*/i',$m[1],$addresses))
+                foreach($addresses[1] as$value)$add('address',$value);
+        }
+        if(preg_match('/\\bEmployers\\s*(.*?)(?:\\bOther Records\\b|$)/is',$personal,$m)){
+            $section=trim($m[1]);
+            if($section!==''&&!preg_match('/^0\\s*$/',$section)){
+                foreach(preg_split('/\\n+/',$section) as$value){
+                    $value=trim($value);
+                    if($value!==''&&!preg_match('/^(Employer ID|#)/i',$value))$add('employer',$value);
+                }
+            }
+        }
+        return$out;
+    }
     private function parse_hard_inquiries($text){if(preg_match('/\b0\s+Hard Inquiries\b/i',$text))return array();return array();}
     private function looks_like_credit_report($text){if(strlen((string)$text)<120)return false;$hits=0;foreach(array('Account Name','Account Number','Experian','Equifax','TransUnion','Credit Report','Prepared For')as$needle)if(stripos($text,$needle)!==false)$hits++;return$hits>=2;}
     private function detect_bureau($text,$fallback){if(stripos($text,'Annual Credit Report - Experian')!==false||stripos($text,'usa.experian.com/acr/')!==false||(stripos($text,'Prepared For')!==false&&stripos($text,'Experian')!==false))return'experian';if(stripos($text,'Equifax')!==false&&stripos($text,'Experian')===false)return'equifax';if(stripos($text,'TransUnion')!==false&&stripos($text,'Experian')===false)return'transunion';return in_array($fallback,array('experian','equifax','transunion','multi'),true)?$fallback:'multi';}
