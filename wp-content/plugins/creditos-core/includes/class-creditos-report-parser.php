@@ -101,7 +101,10 @@ class CreditOS_Report_Parser {
         foreach ($tradelines as $line) {
             $status = (string)($line['status'] ?? '');
             $type = (string)($line['account_type'] ?? '');
-            if (stripos($status, 'collection account') === false && stripos($type, 'collection') === false && stripos($type, 'debt buyer') === false) continue;
+            $remarks = (string)($line['remarks'] ?? '');
+            $payment = (string)($line['payment_status'] ?? '');
+            $classification = $status . ' ' . $remarks . ' ' . $payment;
+            if (stripos($classification, 'collection account') === false && stripos($type, 'collection') === false && stripos($type, 'debt buyer') === false) continue;
             $collections[] = array(
                 'collector_name'=>$line['creditor_name'],
                 'original_creditor'=>'',
