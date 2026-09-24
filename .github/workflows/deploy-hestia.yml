@@ -31,6 +31,12 @@ jobs:
           php-version: '8.2'
           coverage: none
 
+      - name: Install CreditOS PHP dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --working-dir=wp-content/plugins/creditos-core --no-dev --prefer-dist --no-interaction --optimize-autoloader
+
       - name: PHP syntax check
         shell: bash
         run: |
@@ -70,6 +76,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install CreditOS PHP dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --working-dir=wp-content/plugins/creditos-core --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
       - name: Configure SSH
         shell: bash
