@@ -39,6 +39,29 @@ jobs:
             php -l "$file"
           done < <(find wp-content -type f -name '*.php' -print0)
 
+      - name: CreditOS parser smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            define("ABSPATH", __DIR__ . "/");
+            class WP_Error {
+              public function __construct($code="", $message="") {}
+            }
+            function apply_filters($tag, $value){ return $value; }
+            require "wp-content/plugins/creditos-core/includes/class-creditos-report-parser.php";
+            $parser = new CreditOS_Report_Parser();
+            $ref = new ReflectionClass($parser);
+            $method = $ref->getMethod("pdf_text_operators");
+            $method->setAccessible(true);
+            $result = $method->invoke($parser, "(Account\\040Name) Tj");
+            if (strpos($result, "Account Name") === false) {
+              fwrite(STDERR, "CreditOS parser smoke test failed\n");
+              exit(1);
+            }
+            echo "CreditOS parser smoke test passed\n";
+          '
+
   deploy:
     name: Deploy to Hestia
     needs: validate
