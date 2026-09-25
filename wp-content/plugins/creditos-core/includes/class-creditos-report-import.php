@@ -29,7 +29,7 @@ class CreditOS_Report_Import {
 
     private function ensure_report_versions_table(){
         require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
-        dbDelta("CREATE TABLE {$p}creditos_report_versions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,version_number INT UNSIGNED NOT NULL,event_type VARCHAR(40) NOT NULL DEFAULT 'normalization',snapshot LONGTEXT NOT NULL,record_count INT UNSIGNED NOT NULL DEFAULT 0,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),UNIQUE KEY report_version(report_id,version_number),KEY client_id(client_id),KEY created_at(created_at)) $c;");
+        dbDelta("CREATE TABLE {$p}creditos_report_versions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,version_number INT UNSIGNED NOT NULL,event_type VARCHAR(40) NOT NULL DEFAULT 'normalization',snapshot LONGTEXT NOT NULL,snapshot_hash VARCHAR(64) NOT NULL DEFAULT '',record_count INT UNSIGNED NOT NULL DEFAULT 0,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),UNIQUE KEY report_version(report_id,version_number),KEY client_id(client_id),KEY created_at(created_at)) $c;");
     }
 
     private function create_report_version($rid,$cid,$event_type='normalization'){
@@ -39,7 +39,7 @@ class CreditOS_Report_Import {
         }
         $count=0; foreach($snapshot as $rows)$count+=count($rows); if($count<1)return false;
         $version=1+(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COALESCE(MAX(version_number),0) FROM {$p}creditos_report_versions WHERE report_id=%d AND client_id=%d",$rid,$cid));
-        $ok=$this->wpdb->insert($p.'creditos_report_versions',array('report_id'=>$rid,'client_id'=>$cid,'version_number'=>$version,'event_type'=>sanitize_key($event_type),'snapshot'=>wp_json_encode($snapshot),'record_count'=>$count,'created_by'=>get_current_user_id(),'created_at'=>current_time('mysql')));
+        $ok=$this->wpdb->insert($p.'creditos_report_versions',array('report_id'=>$rid,'client_id'=>$cid,'version_number'=>$version,'event_type'=>sanitize_key($event_type),'snapshot'=>($snapshot_json=wp_json_encode($snapshot)),'snapshot_hash'=>hash('sha256',$snapshot_json),'record_count'=>$count,'created_by'=>get_current_user_id(),'created_at'=>current_time('mysql')));
         if($ok)$this->repository->audit(get_current_user_id(),$cid,'credit_report_version_created','credit_report',$rid,array('version_number'=>$version,'record_count'=>$count,'event_type'=>$event_type));
         return(bool)$ok;
     }
@@ -129,9 +129,9 @@ class CreditOS_Report_Import {
         $rid=absint($request['id']); $from=absint($request->get_param('from')); $to=absint($request->get_param('to')); if(!$from||!$to||$from===$to)return new WP_Error('creditos_versions_invalid','Choose two different report versions.',array('status'=>400));
         $reports=$this->wpdb->prefix.'creditos_credit_reports'; $owns=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$reports} WHERE id=%d AND client_id=%d LIMIT 1",$rid,$client->id)); if(!$owns)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));
         $table=$this->wpdb->prefix.'creditos_report_versions';
-        $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT version_number,snapshot FROM {$table} WHERE report_id=%d AND client_id=%d AND version_number IN (%d,%d)",$rid,$client->id,$from,$to),ARRAY_A);
+        $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT version_number,snapshot,snapshot_hash FROM {$table} WHERE report_id=%d AND client_id=%d AND version_number IN (%d,%d)",$rid,$client->id,$from,$to),ARRAY_A);
         if(count($rows)!==2)return new WP_Error('creditos_versions_not_found','One or both report versions were not found.',array('status'=>404));
-        $snap=array(); foreach($rows as $row)$snap[(int)$row['version_number']]=json_decode($row['snapshot'],true)?:array();
+        $snap=array(); foreach($rows as $row){$stored=(string)($row['snapshot_hash']??'');if($stored!==''&&!hash_equals($stored,hash('sha256',(string)$row['snapshot']))){$this->repository->audit(get_current_user_id(),$client->id,'credit_report_version_integrity_failed','credit_report',$rid,array('version_number'=>(int)$row['version_number']));return new WP_Error('creditos_version_integrity_failed','A report version failed its integrity check and cannot be compared.',array('status'=>409));}$snap[(int)$row['version_number']]=json_decode($row['snapshot'],true)?:array();}
         $summary=array(); foreach(array('tradelines','collections','inquiries','personal_information') as $domain){$a=count((array)($snap[$from][$domain]??array()));$b=count((array)($snap[$to][$domain]??array()));$summary[$domain]=array('from'=>$a,'to'=>$b,'delta'=>$b-$a);}
         $fields=array('balance','credit_limit','past_due','status','payment_status','opened_date','remarks'); $changes=array();
         $key=function($r){return strtolower(trim((string)($r['creditor_name']??''))).'|'.trim((string)($r['account_number_masked']??''));};
