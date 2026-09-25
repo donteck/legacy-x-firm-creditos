@@ -63,6 +63,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_reports'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/import',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'import_report'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'get_report'),'permission_callback'=>array($this,'logged_in')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/versions',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_report_versions'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/normalized',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'save_normalized'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/reprocess',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'reprocess_report'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline'),'permission_callback'=>array($this,'logged_in')));
@@ -114,6 +115,16 @@ class CreditOS_Report_Import {
     private function mark_failed($rid,$cid,$message){$this->wpdb->update($this->wpdb->prefix.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>$message,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));}
 
     public function reprocess_report(WP_REST_Request $request){$c=$this->current_client();if(!$c)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));$rid=absint($request['id']);$p=$this->wpdb->prefix;$row=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$c->id),ARRAY_A);if(!$row)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));$path=get_attached_file(absint($row['source_attachment_id']));$ok=$this->process_report($rid,$c->id,$path,$row['source_format'],$row['bureau']);return rest_ensure_response(array('success'=>(bool)$ok,'report'=>$this->report_payload($rid,$c->id)));}
+
+    public function list_report_versions(WP_REST_Request $request){
+        $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
+        $rid=absint($request['id']); $reports=$this->wpdb->prefix.'creditos_credit_reports';
+        $exists=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$reports} WHERE id=%d AND client_id=%d LIMIT 1",$rid,$client->id));
+        if(!$exists)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));
+        $versions=$this->wpdb->prefix.'creditos_report_versions';
+        $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,version_number,event_type,record_count,created_by,created_at FROM {$versions} WHERE report_id=%d AND client_id=%d ORDER BY version_number DESC LIMIT 100",$rid,$client->id),ARRAY_A);
+        return rest_ensure_response(array('versions'=>$rows,'count'=>count($rows)));
+    }
 
     public function list_saved_reviews(WP_REST_Request $request){
         $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
