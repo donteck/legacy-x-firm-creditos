@@ -107,14 +107,12 @@ class CreditOS_Report_Import {
             if(!$path||!file_exists($path)){ $this->mark_failed($rid,$cid,'Uploaded source file is unavailable on the server.'); return false; }
             if('json'===$ext){$payload=json_decode(file_get_contents($path),true); if(!is_array($payload)){ $this->mark_failed($rid,$cid,'JSON could not be parsed.'); return false; } return $this->apply_normalized_payload($rid,$cid,$payload,$event_type);}
             $parser=new CreditOS_Report_Parser(); $parsed=$parser->parse($path,$ext,$bureau);
-            if(is_wp_error($parsed)){ $code=$parsed->get_error_code(); $status=('creditos_pdf_needs_ocr'===$code)?'needs_ocr':'failed'; $this->wpdb->update($t,array('status'=>'needs_review','parser_status'=>$status,'error_message'=>$parsed->get_error_message(),'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid)); $this->repository->audit(get_current_user_id(),$cid,'credit_report_parse_failed','credit_report',$rid,array('code'=>$code)); return false; }
+            if(is_wp_error($parsed)){ $code=sanitize_key($parsed->get_error_code()); $status=('creditos_pdf_needs_ocr'===$code)?'needs_ocr':'failed'; $safe_errors=array('creditos_pdf_needs_ocr'=>'This PDF needs OCR or a text-readable copy before CreditOS can normalize it.'); $safe_error=$safe_errors[$code]??'CreditOS could not safely normalize this report. The source file was preserved for review.'; $this->wpdb->update($t,array('status'=>'needs_review','parser_status'=>$status,'error_message'=>$safe_error,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid)); $this->repository->audit(get_current_user_id(),$cid,'credit_report_parse_failed','credit_report',$rid,array('code'=>$code)); return false; }
             if(!empty($parsed['bureau']))$this->wpdb->update($t,array('bureau'=>sanitize_key($parsed['bureau'])),array('id'=>$rid,'client_id'=>$cid));
             $payload=is_array($parsed['normalized']??null)?$parsed['normalized']:array(); $result=$this->apply_normalized_payload($rid,$cid,$payload,$event_type); if($result)$this->repository->audit(get_current_user_id(),$cid,'credit_report_parsed','credit_report',$rid,array('bureau'=>$parsed['bureau']??$bureau,'text_length'=>$parsed['text_length']??0)); return $result;
         }catch(Throwable $e){
             $safe_class = sanitize_text_field(get_class($e));
-            $safe_message = sanitize_text_field($e->getMessage());
-            if (strlen($safe_message) > 240) $safe_message = substr($safe_message, 0, 240) . '…';
-            $this->mark_failed($rid,$cid,'CreditOS parser exception ['.$safe_class.']: '.$safe_message);
+            $this->mark_failed($rid,$cid,'CreditOS could not safely process this report. The source file was preserved for review.');
             $this->repository->audit(get_current_user_id(),$cid,'credit_report_processing_exception','credit_report',$rid,array('exception_class'=>$safe_class));
             return false;
         }
