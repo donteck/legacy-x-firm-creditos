@@ -142,7 +142,7 @@ The current Inspector combines normalized account review, discrepancy documentat
 ### Remaining Phase 1C Work
 
 - ~~Inspector/mobile UX refinement~~ — implemented in commit `969f28d`; responsive single-column review panels, touch-friendly save controls, improved textarea sizing, and small-screen readability.
-- Phase 1C end-to-end testing
+- **Phase 1C end-to-end testing — ACTIVE TEST GATE**
 - Phase 1D manual verification/editing
 - Preserve original values when edits are introduced
 - Phase 1E report/version history
@@ -181,3 +181,29 @@ CreditOS must preserve these rules throughout the Inspector workflow:
 ---
 
 **CreditOS principle:** Help the user understand what changed, what matters, and what they should do next.
+
+
+## Phase 1C End-to-End Test Gate
+
+Before Phase 1D begins, the Report Inspector must pass this controlled workflow:
+
+1. Open an imported normalized report and confirm tradelines load.
+2. Open **Inspect →** for a tradeline and confirm complete account details render.
+3. Confirm **Source vs. Normalized** displays the structured normalized values.
+4. Select a discrepancy issue type and field, then enter a factual verification note.
+5. Set an evidence status and enter evidence notes.
+6. Select a review status and enter reviewer notes.
+7. Save the review and confirm the success state.
+8. Close/reopen the account and confirm review, discrepancy, and evidence values persist.
+9. Confirm another tradeline retains its own independent review state.
+10. Confirm no raw report text or sensitive diagnostic payload is exposed.
+11. Confirm the Inspector remains usable on desktop and mobile widths.
+12. Confirm existing report counts and normalized records are unchanged by review-only actions.
+
+### Pass Criteria
+
+Phase 1C is ready to close only when the complete review state persists correctly, account isolation is preserved, no normalized credit data is unintentionally modified, and the workflow remains usable across supported screen sizes.
+
+### Phase 1D Entry Condition
+
+Phase 1D — Manual Verification & Editing begins only after the Phase 1C test gate passes. Phase 1D must preserve original normalized values alongside any reviewer-approved corrections so CreditOS retains an auditable source-to-normalized-to-reviewed history.
