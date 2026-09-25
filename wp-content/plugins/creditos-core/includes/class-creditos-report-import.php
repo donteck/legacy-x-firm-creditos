@@ -132,7 +132,8 @@ class CreditOS_Report_Import {
         $exists=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id));
         if(!$exists)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));
         $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,field_name,original_value,reviewed_value,reason,reviewed_by,reviewed_at FROM {$ct} WHERE tradeline_id=%d AND report_id=%d AND client_id=%d ORDER BY reviewed_at DESC,id DESC",$tid,$rid,$client->id),ARRAY_A);
-        return rest_ensure_response(array('corrections'=>$rows,'count'=>count($rows)));
+        $latest=array(); foreach($rows as $row){$field=$row['field_name']; if(!isset($latest[$field]))$latest[$field]=$row;}
+        return rest_ensure_response(array('corrections'=>$rows,'count'=>count($rows),'latest_by_field'=>$latest));
     }
 
     public function create_tradeline_correction(WP_REST_Request $request){
