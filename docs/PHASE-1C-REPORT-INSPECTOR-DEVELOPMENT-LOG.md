@@ -207,3 +207,10 @@ Phase 1C is ready to close only when the complete review state persists correctl
 ### Phase 1D Entry Condition
 
 Phase 1D — Manual Verification & Editing begins only after the Phase 1C test gate passes. Phase 1D must preserve original normalized values alongside any reviewer-approved corrections so CreditOS retains an auditable source-to-normalized-to-reviewed history.
+
+
+## Review Attribution Hardening
+
+Saved tradeline reviews now record `reviewed_by` and `reviewed_at` in addition to the structured review content. This strengthens retrieval and auditability by preserving which authenticated WordPress user last saved the review and when the save occurred. The original normalized account values remain separate from review metadata.
+
+Implementation commit: `b47b67a`.
