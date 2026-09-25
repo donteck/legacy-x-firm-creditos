@@ -7,6 +7,7 @@ class CreditOS_Report_Import {
 
     public function maybe_install_schema(){
         $this->ensure_phase1b_tradeline_columns();
+        $this->ensure_tradeline_corrections_table();
         $this->ensure_report_versions_table();
         if(get_option('creditos_reports_schema_version')===CREDITOS_CORE_VERSION)return;
         require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
@@ -19,6 +20,11 @@ class CreditOS_Report_Import {
         "CREATE TABLE {$p}creditos_personal_information (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,bureau VARCHAR(40) NULL,info_type VARCHAR(40) NOT NULL,info_value VARCHAR(255) NOT NULL,status VARCHAR(30) NOT NULL DEFAULT 'reported',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY report_id(report_id),KEY client_id(client_id),KEY info_type(info_type)) $c;",
         "CREATE TABLE {$p}creditos_tradeline_corrections (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,tradeline_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,field_name VARCHAR(50) NOT NULL,original_value TEXT NULL,reviewed_value TEXT NULL,reason TEXT NOT NULL,reviewed_by BIGINT UNSIGNED NOT NULL,reviewed_at DATETIME NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY tradeline_id(tradeline_id),KEY report_id(report_id),KEY client_id(client_id),KEY field_name(field_name)) $c;"
         ); foreach($tables as$sql)dbDelta($sql); update_option('creditos_reports_schema_version',CREDITOS_CORE_VERSION);
+    }
+
+    private function ensure_tradeline_corrections_table(){
+        require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
+        dbDelta("CREATE TABLE {$p}creditos_tradeline_corrections (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,tradeline_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,field_name VARCHAR(50) NOT NULL,original_value TEXT NULL,reviewed_value TEXT NULL,reason TEXT NOT NULL,reviewed_by BIGINT UNSIGNED NOT NULL,reviewed_at DATETIME NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY tradeline_id(tradeline_id),KEY report_id(report_id),KEY client_id(client_id),KEY field_name(field_name)) $c;");
     }
 
     private function ensure_report_versions_table(){
