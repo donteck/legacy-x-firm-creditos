@@ -121,21 +121,25 @@ After the correction, the GitHub → validation → Hestia deployment pipeline c
 
 This allows normal CreditOS changes pushed to `main` to proceed through validation and production deployment without routine manual Hestia file copying.
 
+### 5. Source vs. Normalized Review
+
+The Account Inspector now includes a dedicated **Source vs. Normalized** review panel. It presents the normalized values extracted by CreditOS for the selected tradeline so the reviewer can verify the structured interpretation before making a review determination. The panel includes creditor, masked account, type, responsibility, opened date, status, balance, credit limit, past due, payment status, status-updated date, balance-updated date, and remarks.
+
+The design intentionally avoids exposing raw credit-report text through diagnostics. Source context remains associated with the imported report while the Inspector presents the normalized review model.
+
+Deployment commits: `94bd642` and `a361c7b`. Both completed the automated GitHub → Hestia production workflow successfully.
+
 ## Current Phase 1C Checkpoint
 
 The working Inspector stack is:
 
 **Account Details → Discrepancy Review → Evidence Review → Review Status → Reviewer Notes → Save Review**
 
-The immediate validation checkpoint is to confirm that discrepancy, evidence, review status, and reviewer notes all persist after saving and reopening the account.
+The current Inspector combines normalized account review, discrepancy documentation, evidence tracking, review status, reviewer notes, and persistence. Source-vs-Normalized Review is now deployed. The next development focus is Inspector/mobile UX refinement and Phase 1C end-to-end testing.
 
 ## Next Planned Work
 
-### Source-vs-Normalized Review
-
-The next Phase 1C development target is a review experience that helps an authorized reviewer compare normalized CreditOS fields against their source-report context without exposing sensitive raw report data unnecessarily.
-
-After that:
+### Remaining Phase 1C Work
 
 - Inspector/mobile UX refinement
 - Phase 1C end-to-end testing
