@@ -66,3 +66,31 @@ Phase 1E is not marked fully validated until authenticated regression/persistenc
 5. Complete mobile/workflow regression and UX cleanup.
 6. Close the pending Phase 1C authenticated test gate.
 7. Produce Phase 1 readiness checklist for Phase 2 — 3-Bureau Intelligence.
+
+
+## Phase 1F Hardening Progress
+- CreditOS report APIs require an authenticated CreditOS client context; staff diagnostics remain separately staff-restricted.
+- Report/tradeline operations enforce client-scoped ownership in their data queries.
+- Verified correction values are field-aware: dates and monetary values are validated, text is sanitized, and account-number corrections must remain masked.
+- The Phase 1D correction table now self-heals before the schema-version early return on existing installations.
+- Normalized record replacement is transaction-protected across tradelines, collections, inquiries and personal information.
+- Delete or insert failures abort replacement and roll back before report failure state is persisted.
+- Empty normalization and report-version creation failures roll back first so previously good normalized records are preserved.
+- Replacement failures are audited without exposing raw database errors or credit-report source text.
+
+## Phase 1 Final Readiness Gate
+Engineering hardening is substantially complete, but Phase 1 is not yet declared complete until the authenticated end-to-end regression gate passes.
+
+Required final validation:
+1. Existing normalized report remains intact after a deliberately rejected/empty replacement.
+2. Inspector review state persists after save/reopen.
+3. Discrepancy and evidence state persist independently per tradeline.
+4. Verified correction history is append-only and Effective Reviewed Record uses the latest correction without changing the normalized source value.
+5. Review Timeline returns only the authenticated client's exact report/tradeline history.
+6. Report Version History and Compare Versions remain client-scoped.
+7. Saved Reviews opens the exact saved tradeline.
+8. No raw credit-report text or unmasked account number is exposed through Phase 1 APIs/UI.
+9. Desktop/mobile Inspector workflows remain usable.
+10. Existing normalized record counts remain stable through review/correction workflows.
+
+After this gate passes, Phase 1 can be closed and Phase 2 — 3-Bureau Intelligence can begin.
