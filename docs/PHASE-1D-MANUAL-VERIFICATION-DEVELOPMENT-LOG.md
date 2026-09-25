@@ -94,3 +94,12 @@ Required final validation:
 10. Existing normalized record counts remain stable through review/correction workflows.
 
 After this gate passes, Phase 1 can be closed and Phase 2 — 3-Bureau Intelligence can begin.
+
+
+## Phase 1F Endpoint Permission Audit
+- Completed a route-level permission audit of the CreditOS report subsystem.
+- All client-facing report routes now require `client_access`: reports, import, report detail, normalized save, reprocess, review, saved reviews, review history, correction read/write, report versions and version comparison.
+- Diagnostics remains separately restricted to `staff_only`.
+- Data-query ownership checks remain scoped by the authenticated CreditOS client, report ID and tradeline ID where applicable.
+- Report-version snapshots now use SHA-256 integrity hashes for newly created versions; hashed snapshots are verified before comparison and mismatches are blocked/audited.
+- Legacy report versions without a stored hash remain readable/comparable as legacy-unverified data rather than being broken by the upgrade.
