@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 class CreditOS_Report_Processing {
     private $repository,$wpdb,$parser;
-    public function __construct( CreditOS_Repository $repository ) { global $wpdb;$this->repository=$repository;$this->wpdb=$wpdb;$this->parser=new CreditOS_Report_Parser();add_filter('rest_request_after_callbacks',array($this,'process_after_import'),10,3); }
+    public function __construct( CreditOS_Repository $repository ) { global $wpdb;$this->repository=$repository;$this->wpdb=$wpdb;$this->parser=new CreditOS_Report_Parser(); /* Legacy post-import callback intentionally not registered: the primary importer owns all current import processing. */ }
     public function process_after_import($response,$handler,$request){
         // The primary report importer already parses and normalizes the source synchronously.
         // Do not run this legacy compatibility processor a second time after a successful import.
