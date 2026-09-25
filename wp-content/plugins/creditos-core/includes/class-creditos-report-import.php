@@ -120,6 +120,7 @@ class CreditOS_Report_Import {
     public function compare_report_versions(WP_REST_Request $request){
         $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
         $rid=absint($request['id']); $from=absint($request->get_param('from')); $to=absint($request->get_param('to')); if(!$from||!$to||$from===$to)return new WP_Error('creditos_versions_invalid','Choose two different report versions.',array('status'=>400));
+        $reports=$this->wpdb->prefix.'creditos_credit_reports'; $owns=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$reports} WHERE id=%d AND client_id=%d LIMIT 1",$rid,$client->id)); if(!$owns)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));
         $table=$this->wpdb->prefix.'creditos_report_versions';
         $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT version_number,snapshot FROM {$table} WHERE report_id=%d AND client_id=%d AND version_number IN (%d,%d)",$rid,$client->id,$from,$to),ARRAY_A);
         if(count($rows)!==2)return new WP_Error('creditos_versions_not_found','One or both report versions were not found.',array('status'=>404));
@@ -130,6 +131,7 @@ class CreditOS_Report_Import {
         $a=array();foreach((array)($snap[$from]['tradelines']??array())as$r)$a[$key($r)]=$r; $b=array();foreach((array)($snap[$to]['tradelines']??array())as$r)$b[$key($r)]=$r;
         foreach($b as $k=>$row){if(!isset($a[$k])){$changes[]=array('type'=>'added','creditor_name'=>$row['creditor_name']??'Account','account_number_masked'=>$row['account_number_masked']??'');continue;} $diff=array();foreach($fields as$field)if((string)($a[$k][$field]??'')!==(string)($row[$field]??''))$diff[$field]=array('from'=>$a[$k][$field]??null,'to'=>$row[$field]??null);if($diff)$changes[]=array('type'=>'changed','creditor_name'=>$row['creditor_name']??'Account','account_number_masked'=>$row['account_number_masked']??'','fields'=>$diff);}
         foreach($a as$k=>$row)if(!isset($b[$k]))$changes[]=array('type'=>'removed','creditor_name'=>$row['creditor_name']??'Account','account_number_masked'=>$row['account_number_masked']??'');
+        $this->repository->audit(get_current_user_id(),$client->id,'credit_report_versions_compared','credit_report',$rid,array('from_version'=>$from,'to_version'=>$to,'change_count'=>count($changes)));
         return rest_ensure_response(array('from_version'=>$from,'to_version'=>$to,'summary'=>$summary,'tradeline_changes'=>$changes,'change_count'=>count($changes)));
     }
 
