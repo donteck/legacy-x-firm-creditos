@@ -7,6 +7,7 @@ class CreditOS_Report_Import {
 
     public function maybe_install_schema(){
         $this->ensure_phase1b_tradeline_columns();
+        $this->ensure_report_versions_table();
         if(get_option('creditos_reports_schema_version')===CREDITOS_CORE_VERSION)return;
         require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
         $tables=array(
@@ -18,6 +19,23 @@ class CreditOS_Report_Import {
         "CREATE TABLE {$p}creditos_personal_information (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,bureau VARCHAR(40) NULL,info_type VARCHAR(40) NOT NULL,info_value VARCHAR(255) NOT NULL,status VARCHAR(30) NOT NULL DEFAULT 'reported',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY report_id(report_id),KEY client_id(client_id),KEY info_type(info_type)) $c;",
         "CREATE TABLE {$p}creditos_tradeline_corrections (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,tradeline_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,field_name VARCHAR(50) NOT NULL,original_value TEXT NULL,reviewed_value TEXT NULL,reason TEXT NOT NULL,reviewed_by BIGINT UNSIGNED NOT NULL,reviewed_at DATETIME NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY tradeline_id(tradeline_id),KEY report_id(report_id),KEY client_id(client_id),KEY field_name(field_name)) $c;"
         ); foreach($tables as$sql)dbDelta($sql); update_option('creditos_reports_schema_version',CREDITOS_CORE_VERSION);
+    }
+
+    private function ensure_report_versions_table(){
+        require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
+        dbDelta("CREATE TABLE {$p}creditos_report_versions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,version_number INT UNSIGNED NOT NULL,event_type VARCHAR(40) NOT NULL DEFAULT 'normalization',snapshot LONGTEXT NOT NULL,record_count INT UNSIGNED NOT NULL DEFAULT 0,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),UNIQUE KEY report_version(report_id,version_number),KEY client_id(client_id),KEY created_at(created_at)) $c;");
+    }
+
+    private function create_report_version($rid,$cid,$event_type='normalization'){
+        $p=$this->wpdb->prefix; $snapshot=array();
+        foreach(array('tradelines','collections','inquiries','personal_information') as $name){
+            $snapshot[$name]=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_{$name} WHERE report_id=%d AND client_id=%d ORDER BY id",$rid,$cid),ARRAY_A);
+        }
+        $count=0; foreach($snapshot as $rows)$count+=count($rows); if($count<1)return false;
+        $version=1+(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COALESCE(MAX(version_number),0) FROM {$p}creditos_report_versions WHERE report_id=%d AND client_id=%d",$rid,$cid));
+        $ok=$this->wpdb->insert($p.'creditos_report_versions',array('report_id'=>$rid,'client_id'=>$cid,'version_number'=>$version,'event_type'=>sanitize_key($event_type),'snapshot'=>wp_json_encode($snapshot),'record_count'=>$count,'created_by'=>get_current_user_id(),'created_at'=>current_time('mysql')));
+        if($ok)$this->repository->audit(get_current_user_id(),$cid,'credit_report_version_created','credit_report',$rid,array('version_number'=>$version,'record_count'=>$count,'event_type'=>$event_type));
+        return(bool)$ok;
     }
 
     private function ensure_phase1b_tradeline_columns(){
@@ -189,6 +207,7 @@ class CreditOS_Report_Import {
         $counts=array();foreach(array('tradelines','collections','inquiries','personal_information')as$table)$counts[$table]=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_{$table} WHERE report_id=%d AND client_id=%d",$rid,$cid));
         $total=array_sum($counts);if($total<1){$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'needs_review','error_message'=>'No structured credit records were extracted. The source report remains available for parser refinement and reprocessing.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));$this->repository->audit(get_current_user_id(),$cid,'credit_report_normalization_empty','credit_report',$rid,$counts);$this->wpdb->query('ROLLBACK');return false;}
         $this->wpdb->query('COMMIT');
+        $this->create_report_version($rid,$cid,'normalization');
         $this->wpdb->update($p.'creditos_credit_reports',array('status'=>'ready_for_review','parser_status'=>'normalized','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));return true;}
 
     private function report_payload($rid,$cid){$p=$this->wpdb->prefix;$report=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,provider,report_date,imported_at,status,parser_status,source_format,source_filename,error_message FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid),ARRAY_A);if(!$report)return null;$report['tradelines']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_tradelines WHERE report_id=%d AND client_id=%d ORDER BY creditor_name",$rid,$cid),ARRAY_A);$report['collections']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_collections WHERE report_id=%d AND client_id=%d ORDER BY collector_name",$rid,$cid),ARRAY_A);$report['inquiries']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_inquiries WHERE report_id=%d AND client_id=%d ORDER BY inquiry_date DESC",$rid,$cid),ARRAY_A);$report['personal_information']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_personal_information WHERE report_id=%d AND client_id=%d ORDER BY info_type,info_value",$rid,$cid),ARRAY_A);return$report;}
