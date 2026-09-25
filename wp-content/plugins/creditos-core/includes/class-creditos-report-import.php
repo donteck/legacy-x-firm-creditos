@@ -25,7 +25,10 @@ class CreditOS_Report_Import {
             'status_updated'=>"DATE NULL AFTER status",
             'balance_updated'=>"DATE NULL AFTER payment_status",
             'review_status'=>"VARCHAR(30) NOT NULL DEFAULT 'needs_review' AFTER responsibility",
-            'reviewer_notes'=>"TEXT NULL AFTER review_status"
+            'reviewer_notes'=>"TEXT NULL AFTER review_status",
+            'discrepancy_type'=>"VARCHAR(50) NULL AFTER reviewer_notes",
+            'discrepancy_field'=>"VARCHAR(50) NULL AFTER discrepancy_type",
+            'discrepancy_details'=>"TEXT NULL AFTER discrepancy_field"
         );
         foreach($required as $column=>$definition){
             $exists=$this->wpdb->get_var($this->wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",$column));
@@ -92,9 +95,13 @@ class CreditOS_Report_Import {
         if(!in_array($status,$allowed,true))return new WP_Error('creditos_review_status_invalid','Choose a valid review status.',array('status'=>400));
         $table=$this->wpdb->prefix.'creditos_tradelines'; $exists=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$table} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id));
         if(!$exists)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));
-        $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>sanitize_textarea_field($data['reviewer_notes']??'')),array('id'=>$tid,'report_id'=>$rid,'client_id'=>$client->id));
+        $allowed_types=array('','identity','account_status','balance','credit_limit','payment_history','dates','ownership','duplicate','other');
+        $dtype=sanitize_key($data['discrepancy_type']??''); if(!in_array($dtype,$allowed_types,true))$dtype='other';
+        $allowed_fields=array('','creditor_name','account_number_masked','account_type','responsibility','opened_date','status','status_updated','balance','credit_limit','past_due','payment_status','balance_updated','remarks');
+        $dfield=sanitize_key($data['discrepancy_field']??''); if(!in_array($dfield,$allowed_fields,true))$dfield='';
+        $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>sanitize_textarea_field($data['reviewer_notes']??''),'discrepancy_type'=>$dtype?:null,'discrepancy_field'=>$dfield?:null,'discrepancy_details'=>sanitize_textarea_field($data['discrepancy_details']??'')),array('id'=>$tid,'report_id'=>$rid,'client_id'=>$client->id));
         if(false===$ok)return new WP_Error('creditos_review_save_failed','The account review could not be saved.',array('status'=>500));
-        $this->repository->audit(get_current_user_id(),$client->id,'tradeline_review_saved','tradeline',$tid,array('report_id'=>$rid,'review_status'=>$status));
+        $this->repository->audit(get_current_user_id(),$client->id,'tradeline_review_saved','tradeline',$tid,array('report_id'=>$rid,'review_status'=>$status,'discrepancy_type'=>$dtype,'discrepancy_field'=>$dfield));
         return rest_ensure_response(array('success'=>true,'review_status'=>$status));
     }
 
