@@ -133,7 +133,10 @@ class CreditOS_Report_Import {
         if(!$exists)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));
         $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,field_name,original_value,reviewed_value,reason,reviewed_by,reviewed_at FROM {$ct} WHERE tradeline_id=%d AND report_id=%d AND client_id=%d ORDER BY reviewed_at DESC,id DESC",$tid,$rid,$client->id),ARRAY_A);
         $latest=array(); foreach($rows as $row){$field=$row['field_name']; if(!isset($latest[$field]))$latest[$field]=$row;}
-        return rest_ensure_response(array('corrections'=>$rows,'count'=>count($rows),'latest_by_field'=>$latest));
+        $tradeline=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id),ARRAY_A);
+        $effective=array(); $fields=array('creditor_name','account_number_masked','account_type','responsibility','opened_date','status','status_updated','balance','credit_limit','past_due','payment_status','balance_updated','remarks');
+        foreach($fields as $field){$effective[$field]=isset($latest[$field])?$latest[$field]['reviewed_value']:($tradeline[$field]??null);}
+        return rest_ensure_response(array('corrections'=>$rows,'count'=>count($rows),'latest_by_field'=>$latest,'effective_reviewed_record'=>$effective));
     }
 
     public function create_tradeline_correction(WP_REST_Request $request){
