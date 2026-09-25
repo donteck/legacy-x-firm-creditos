@@ -64,6 +64,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/import',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'import_report'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'get_report'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/versions',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_report_versions'),'permission_callback'=>array($this,'logged_in')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/versions/compare',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'compare_report_versions'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/normalized',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'save_normalized'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/reprocess',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'reprocess_report'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline'),'permission_callback'=>array($this,'logged_in')));
@@ -115,6 +116,22 @@ class CreditOS_Report_Import {
     private function mark_failed($rid,$cid,$message){$this->wpdb->update($this->wpdb->prefix.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>$message,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));}
 
     public function reprocess_report(WP_REST_Request $request){$c=$this->current_client();if(!$c)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));$rid=absint($request['id']);$p=$this->wpdb->prefix;$row=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$c->id),ARRAY_A);if(!$row)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));$path=get_attached_file(absint($row['source_attachment_id']));$ok=$this->process_report($rid,$c->id,$path,$row['source_format'],$row['bureau'],'reprocess');return rest_ensure_response(array('success'=>(bool)$ok,'report'=>$this->report_payload($rid,$c->id)));}
+
+    public function compare_report_versions(WP_REST_Request $request){
+        $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
+        $rid=absint($request['id']); $from=absint($request->get_param('from')); $to=absint($request->get_param('to')); if(!$from||!$to||$from===$to)return new WP_Error('creditos_versions_invalid','Choose two different report versions.',array('status'=>400));
+        $table=$this->wpdb->prefix.'creditos_report_versions';
+        $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT version_number,snapshot FROM {$table} WHERE report_id=%d AND client_id=%d AND version_number IN (%d,%d)",$rid,$client->id,$from,$to),ARRAY_A);
+        if(count($rows)!==2)return new WP_Error('creditos_versions_not_found','One or both report versions were not found.',array('status'=>404));
+        $snap=array(); foreach($rows as $row)$snap[(int)$row['version_number']]=json_decode($row['snapshot'],true)?:array();
+        $summary=array(); foreach(array('tradelines','collections','inquiries','personal_information') as $domain){$a=count((array)($snap[$from][$domain]??array()));$b=count((array)($snap[$to][$domain]??array()));$summary[$domain]=array('from'=>$a,'to'=>$b,'delta'=>$b-$a);}
+        $fields=array('balance','credit_limit','past_due','status','payment_status','opened_date','remarks'); $changes=array();
+        $key=function($r){return strtolower(trim((string)($r['creditor_name']??''))).'|'.trim((string)($r['account_number_masked']??''));};
+        $a=array();foreach((array)($snap[$from]['tradelines']??array())as$r)$a[$key($r)]=$r; $b=array();foreach((array)($snap[$to]['tradelines']??array())as$r)$b[$key($r)]=$r;
+        foreach($b as $k=>$row){if(!isset($a[$k])){$changes[]=array('type'=>'added','creditor_name'=>$row['creditor_name']??'Account','account_number_masked'=>$row['account_number_masked']??'');continue;} $diff=array();foreach($fields as$field)if((string)($a[$k][$field]??'')!==(string)($row[$field]??''))$diff[$field]=array('from'=>$a[$k][$field]??null,'to'=>$row[$field]??null);if($diff)$changes[]=array('type'=>'changed','creditor_name'=>$row['creditor_name']??'Account','account_number_masked'=>$row['account_number_masked']??'','fields'=>$diff);}
+        foreach($a as$k=>$row)if(!isset($b[$k]))$changes[]=array('type'=>'removed','creditor_name'=>$row['creditor_name']??'Account','account_number_masked'=>$row['account_number_masked']??'');
+        return rest_ensure_response(array('from_version'=>$from,'to_version'=>$to,'summary'=>$summary,'tradeline_changes'=>$changes,'change_count'=>count($changes)));
+    }
 
     public function list_report_versions(WP_REST_Request $request){
         $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
