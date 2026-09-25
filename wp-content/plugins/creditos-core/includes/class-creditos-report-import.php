@@ -108,7 +108,7 @@ class CreditOS_Report_Import {
         $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>sanitize_textarea_field($data['reviewer_notes']??''),'discrepancy_type'=>$dtype?:null,'discrepancy_field'=>$dfield?:null,'discrepancy_details'=>sanitize_textarea_field($data['discrepancy_details']??''),'evidence_status'=>$evidence_status,'evidence_notes'=>sanitize_textarea_field($data['evidence_notes']??''),'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')),array('id'=>$tid,'report_id'=>$rid,'client_id'=>$client->id));
         if(false===$ok)return new WP_Error('creditos_review_save_failed','The account review could not be saved.',array('status'=>500));
         $this->repository->audit(get_current_user_id(),$client->id,'tradeline_review_saved','tradeline',$tid,array('report_id'=>$rid,'review_status'=>$status,'discrepancy_type'=>$dtype,'discrepancy_field'=>$dfield,'evidence_status'=>$evidence_status));
-        return rest_ensure_response(array('success'=>true,'review_status'=>$status));
+        return rest_ensure_response(array('success'=>true,'review_status'=>$status,'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')));
     }
 
     public function diagnostics(){ $disabled=array_map('trim',explode(',',(string)ini_get('disable_functions'))); return rest_ensure_response(array('php'=>PHP_VERSION,'exec_available'=>function_exists('exec')&&!in_array('exec',$disabled,true),'pdftotext_usr_bin'=>is_executable('/usr/bin/pdftotext'),'pdftotext_usr_local'=>is_executable('/usr/local/bin/pdftotext'),'upload_dir_writable'=>wp_is_writable(wp_upload_dir()['basedir']),'core_version'=>defined('CREDITOS_CORE_VERSION')?CREDITOS_CORE_VERSION:'')); }
