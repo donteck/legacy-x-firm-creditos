@@ -4,8 +4,12 @@ class CreditOS_Report_Processing {
     private $repository,$wpdb,$parser;
     public function __construct( CreditOS_Repository $repository ) { global $wpdb;$this->repository=$repository;$this->wpdb=$wpdb;$this->parser=new CreditOS_Report_Parser();add_filter('rest_request_after_callbacks',array($this,'process_after_import'),10,3); }
     public function process_after_import($response,$handler,$request){
+        // The primary report importer already parses and normalizes the source synchronously.
+        // Do not run this legacy compatibility processor a second time after a successful import.
         if('/creditos/v1/reports/import'!==$request->get_route()||'POST'!==$request->get_method()||is_wp_error($response))return $response;
-        $data=rest_get_server()->response_to_data($response,false);$id=absint($data['report_id']??0);if(!$id)return$response;
+        $data=rest_get_server()->response_to_data($response,false);
+        if(!empty($data['report']['parser_status'])&&'normalized'===$data['report']['parser_status'])return $response;
+        $id=absint($data['report_id']??0);if(!$id)return$response;
         $r=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,client_id,bureau,source_attachment_id,source_format FROM {$this->wpdb->prefix}creditos_credit_reports WHERE id=%d LIMIT 1",$id),ARRAY_A);
         if(!$r||!in_array($r['source_format'],array('pdf','csv'),true))return$response;
         return $this->process_report($id,$r,$response);
