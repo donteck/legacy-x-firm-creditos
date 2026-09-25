@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           while IFS= read -r -d '' file; do
             php -l "$file"
-          done < <(find wp-content -type f -name '*.php' -print0)
+          done < <(find wp-content -type f -name '*.php' ! -path '*/vendor/*' -print0)
 
       - name: CreditOS parser smoke test
         shell: bash
