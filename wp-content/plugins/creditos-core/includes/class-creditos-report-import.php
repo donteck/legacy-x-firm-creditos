@@ -14,7 +14,9 @@ class CreditOS_Report_Import {
         $path=get_attached_file(absint($attachment_id));
         if(!$path||!file_exists($path))return false;
         @chmod($path,0600);
-        return true;
+        clearstatcache(true,$path);
+        $perms=@fileperms($path);
+        return false!==$perms&&0600===($perms&0777);
     }
 
     public function block_private_report_attachment_page(){
@@ -115,7 +117,7 @@ class CreditOS_Report_Import {
         $files=$request->get_file_params(); if(empty($files['report']['tmp_name']))return new WP_Error('creditos_report_required','Choose a credit report file to import.',array('status'=>400)); $file=$files['report']; if(!empty($file['size'])&&(int)$file['size']>25*MB_IN_BYTES)return new WP_Error('creditos_report_too_large','Credit report files must be 25 MB or smaller.',array('status'=>400));
         $allowed=array('pdf'=>'application/pdf','json'=>'application/json','csv'=>'text/csv'); $check=wp_check_filetype_and_ext($file['tmp_name'],$file['name'],$allowed); $ext=strtolower($check['ext']?:pathinfo($file['name'],PATHINFO_EXTENSION)); if(!isset($allowed[$ext]))return new WP_Error('creditos_report_type','Supported report formats are PDF, JSON, and CSV.',array('status'=>400));
         require_once ABSPATH.'wp-admin/includes/file.php';require_once ABSPATH.'wp-admin/includes/media.php';require_once ABSPATH.'wp-admin/includes/image.php';
-        $aid=media_handle_upload('report',0,array('post_title'=>sanitize_file_name($file['name']),'post_author'=>get_current_user_id()),array('test_form'=>false,'mimes'=>$allowed)); if(is_wp_error($aid))return $aid; update_post_meta($aid,'_creditos_private','1'); $this->harden_private_report_file($aid);
+        $aid=media_handle_upload('report',0,array('post_title'=>sanitize_file_name($file['name']),'post_author'=>get_current_user_id()),array('test_form'=>false,'mimes'=>$allowed)); if(is_wp_error($aid))return $aid; update_post_meta($aid,'_creditos_private','1'); if(!$this->harden_private_report_file($aid)){wp_delete_attachment($aid,true);return new WP_Error('creditos_report_storage_security','CreditOS could not secure the uploaded report file. The upload was removed; please try again or contact support.',array('status'=>500));}
         $bureau=sanitize_key($request->get_param('bureau')?:'multi'); if(!in_array($bureau,array('experian','equifax','transunion','multi'),true))$bureau='multi'; $date=sanitize_text_field($request->get_param('report_date')?:''); $now=current_time('mysql'); $t=$this->wpdb->prefix.'creditos_credit_reports';
         $this->wpdb->insert($t,array('client_id'=>absint($c->id),'bureau'=>$bureau,'provider'=>'manual_upload','report_date'=>$date?:null,'imported_at'=>$now,'status'=>'processing','parser_status'=>'processing','source_attachment_id'=>absint($aid),'source_format'=>$ext,'source_filename'=>sanitize_file_name($file['name']),'created_at'=>$now,'updated_at'=>$now)); $rid=absint($this->wpdb->insert_id); $path=get_attached_file($aid);
         $this->wpdb->insert($this->wpdb->prefix.'creditos_credit_report_sources',array('report_id'=>$rid,'bureau'=>$bureau,'source_type'=>'upload','provider'=>'manual_upload','raw_reference'=>(string)$aid,'checksum'=>$path&&file_exists($path)?hash_file('sha256',$path):null,'created_at'=>$now)); $this->repository->audit(get_current_user_id(),$c->id,'credit_report_uploaded','credit_report',$rid,array('bureau'=>$bureau,'format'=>$ext));
