@@ -93,15 +93,15 @@ class CreditOS_Report_Import {
         return rest_ensure_response(array('success'=>true,'report_id'=>$rid,'report'=>$this->report_payload($rid,$c->id)));
     }
 
-    private function process_report($rid,$cid,$path,$ext,$bureau){
+    private function process_report($rid,$cid,$path,$ext,$bureau,$event_type='initial_normalization'){
         $t=$this->wpdb->prefix.'creditos_credit_reports'; $this->wpdb->update($t,array('status'=>'processing','parser_status'=>'processing','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));
         try{
             if(!$path||!file_exists($path)){ $this->mark_failed($rid,$cid,'Uploaded source file is unavailable on the server.'); return false; }
-            if('json'===$ext){$payload=json_decode(file_get_contents($path),true); if(!is_array($payload)){ $this->mark_failed($rid,$cid,'JSON could not be parsed.'); return false; } return $this->apply_normalized_payload($rid,$cid,$payload);}
+            if('json'===$ext){$payload=json_decode(file_get_contents($path),true); if(!is_array($payload)){ $this->mark_failed($rid,$cid,'JSON could not be parsed.'); return false; } return $this->apply_normalized_payload($rid,$cid,$payload,$event_type);}
             $parser=new CreditOS_Report_Parser(); $parsed=$parser->parse($path,$ext,$bureau);
             if(is_wp_error($parsed)){ $code=$parsed->get_error_code(); $status=('creditos_pdf_needs_ocr'===$code)?'needs_ocr':'failed'; $this->wpdb->update($t,array('status'=>'needs_review','parser_status'=>$status,'error_message'=>$parsed->get_error_message(),'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid)); $this->repository->audit(get_current_user_id(),$cid,'credit_report_parse_failed','credit_report',$rid,array('code'=>$code)); return false; }
             if(!empty($parsed['bureau']))$this->wpdb->update($t,array('bureau'=>sanitize_key($parsed['bureau'])),array('id'=>$rid,'client_id'=>$cid));
-            $payload=is_array($parsed['normalized']??null)?$parsed['normalized']:array(); $result=$this->apply_normalized_payload($rid,$cid,$payload); if($result)$this->repository->audit(get_current_user_id(),$cid,'credit_report_parsed','credit_report',$rid,array('bureau'=>$parsed['bureau']??$bureau,'text_length'=>$parsed['text_length']??0)); return $result;
+            $payload=is_array($parsed['normalized']??null)?$parsed['normalized']:array(); $result=$this->apply_normalized_payload($rid,$cid,$payload,$event_type); if($result)$this->repository->audit(get_current_user_id(),$cid,'credit_report_parsed','credit_report',$rid,array('bureau'=>$parsed['bureau']??$bureau,'text_length'=>$parsed['text_length']??0)); return $result;
         }catch(Throwable $e){
             $safe_class = sanitize_text_field(get_class($e));
             $safe_message = sanitize_text_field($e->getMessage());
@@ -114,7 +114,7 @@ class CreditOS_Report_Import {
 
     private function mark_failed($rid,$cid,$message){$this->wpdb->update($this->wpdb->prefix.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>$message,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));}
 
-    public function reprocess_report(WP_REST_Request $request){$c=$this->current_client();if(!$c)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));$rid=absint($request['id']);$p=$this->wpdb->prefix;$row=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$c->id),ARRAY_A);if(!$row)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));$path=get_attached_file(absint($row['source_attachment_id']));$ok=$this->process_report($rid,$c->id,$path,$row['source_format'],$row['bureau']);return rest_ensure_response(array('success'=>(bool)$ok,'report'=>$this->report_payload($rid,$c->id)));}
+    public function reprocess_report(WP_REST_Request $request){$c=$this->current_client();if(!$c)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));$rid=absint($request['id']);$p=$this->wpdb->prefix;$row=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$c->id),ARRAY_A);if(!$row)return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));$path=get_attached_file(absint($row['source_attachment_id']));$ok=$this->process_report($rid,$c->id,$path,$row['source_format'],$row['bureau'],'reprocess');return rest_ensure_response(array('success'=>(bool)$ok,'report'=>$this->report_payload($rid,$c->id)));}
 
     public function list_report_versions(WP_REST_Request $request){
         $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
@@ -203,7 +203,7 @@ class CreditOS_Report_Import {
     public function save_normalized(WP_REST_Request $request){$c=$this->current_client();if(!$c)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));$rid=absint($request['id']);if(!$this->report_payload($rid,$c->id))return new WP_Error('creditos_report_not_found','Credit report not found.',array('status'=>404));$payload=$request->get_json_params();$result=$this->apply_normalized_payload($rid,$c->id,is_array($payload)?$payload:array());if(is_wp_error($result))return$result;$this->repository->audit(get_current_user_id(),$c->id,'credit_report_normalized','credit_report',$rid);return rest_ensure_response(array('success'=>true,'report'=>$this->report_payload($rid,$c->id)));}
     private function clean_date($v){if(!$v)return null;$ts=strtotime($v);return$ts?gmdate('Y-m-d',$ts):null;} private function money($v){return is_numeric($v)?round((float)$v,2):null;}
 
-    private function apply_normalized_payload($rid,$cid,array$payload){$p=$this->wpdb->prefix;
+    private function apply_normalized_payload($rid,$cid,array$payload,$event_type='normalization'){$p=$this->wpdb->prefix;
         // Validate the new payload before deleting any previously normalized records.
         $incoming=0; foreach(array('tradelines','collections','inquiries','personal_information')as$table)$incoming+=count((array)($payload[$table]??array()));
         if($incoming<1){$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'needs_review','error_message'=>'No structured credit records were extracted. Existing normalized records were preserved.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));return false;}
@@ -218,7 +218,7 @@ class CreditOS_Report_Import {
         $counts=array();foreach(array('tradelines','collections','inquiries','personal_information')as$table)$counts[$table]=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_{$table} WHERE report_id=%d AND client_id=%d",$rid,$cid));
         $total=array_sum($counts);if($total<1){$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'needs_review','error_message'=>'No structured credit records were extracted. The source report remains available for parser refinement and reprocessing.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));$this->repository->audit(get_current_user_id(),$cid,'credit_report_normalization_empty','credit_report',$rid,$counts);$this->wpdb->query('ROLLBACK');return false;}
         $this->wpdb->query('COMMIT');
-        $this->create_report_version($rid,$cid,'normalization');
+        $this->create_report_version($rid,$cid,$event_type);
         $this->wpdb->update($p.'creditos_credit_reports',array('status'=>'ready_for_review','parser_status'=>'normalized','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));return true;}
 
     private function report_payload($rid,$cid){$p=$this->wpdb->prefix;$report=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,provider,report_date,imported_at,status,parser_status,source_format,source_filename,error_message FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid),ARRAY_A);if(!$report)return null;$report['tradelines']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_tradelines WHERE report_id=%d AND client_id=%d ORDER BY creditor_name",$rid,$cid),ARRAY_A);$report['collections']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_collections WHERE report_id=%d AND client_id=%d ORDER BY collector_name",$rid,$cid),ARRAY_A);$report['inquiries']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_inquiries WHERE report_id=%d AND client_id=%d ORDER BY inquiry_date DESC",$rid,$cid),ARRAY_A);$report['personal_information']=$this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$p}creditos_personal_information WHERE report_id=%d AND client_id=%d ORDER BY info_type,info_value",$rid,$cid),ARRAY_A);return$report;}
