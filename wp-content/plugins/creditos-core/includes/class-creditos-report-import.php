@@ -120,9 +120,10 @@ class CreditOS_Report_Import {
         $evidence_status=sanitize_key($data['evidence_status']??'not_requested'); if(!in_array($evidence_status,$allowed_evidence,true))$evidence_status='not_requested';
         $allowed_fields=array('','creditor_name','account_number_masked','account_type','responsibility','opened_date','status','status_updated','balance','credit_limit','past_due','payment_status','balance_updated','remarks');
         $dfield=sanitize_key($data['discrepancy_field']??''); if(!in_array($dfield,$allowed_fields,true))$dfield='';
+        $before=$this->wpdb->get_row($this->wpdb->prepare("SELECT review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at FROM {$table} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id),ARRAY_A);
         $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>sanitize_textarea_field($data['reviewer_notes']??''),'discrepancy_type'=>$dtype?:null,'discrepancy_field'=>$dfield?:null,'discrepancy_details'=>sanitize_textarea_field($data['discrepancy_details']??''),'evidence_status'=>$evidence_status,'evidence_notes'=>sanitize_textarea_field($data['evidence_notes']??''),'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')),array('id'=>$tid,'report_id'=>$rid,'client_id'=>$client->id));
         if(false===$ok)return new WP_Error('creditos_review_save_failed','The account review could not be saved.',array('status'=>500));
-        $this->repository->audit(get_current_user_id(),$client->id,'tradeline_review_saved','tradeline',$tid,array('report_id'=>$rid,'review_status'=>$status,'discrepancy_type'=>$dtype,'discrepancy_field'=>$dfield,'evidence_status'=>$evidence_status));
+        $this->repository->audit(get_current_user_id(),$client->id,'tradeline_review_saved','tradeline',$tid,array('report_id'=>$rid,'review_status'=>$status,'discrepancy_type'=>$dtype,'discrepancy_field'=>$dfield,'evidence_status'=>$evidence_status,'previous_review'=>$before));
         return rest_ensure_response(array('success'=>true,'review_status'=>$status,'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')));
     }
 
