@@ -40,3 +40,6 @@ body.creditos-reports-page{font-family:Inter,ui-sans-serif,system-ui,-apple-syst
 
 /* Phase 1C Saved Review Retrieval Cue */
 .review-save-meta{display:flex;justify-content:flex-end;margin:10px 2px 6px;font-size:9px;color:var(--cr-muted)}.review-save-meta strong{color:#176b3a}
+
+/* Phase 1C Saved Reviews */
+.saved-review-tools{display:flex;gap:10px;align-items:center}.saved-review-tools select{min-height:42px;border:1px solid rgba(23,107,58,.18);border-radius:10px;padding:0 12px;background:#fff}.saved-review-list{display:grid;gap:12px}.saved-review-card{display:grid;grid-template-columns:minmax(220px,1fr) minmax(300px,1.2fr) auto;gap:18px;align-items:center;padding:18px;border:1px solid rgba(23,107,58,.12);border-radius:16px;background:#fff}.saved-review-card h3{margin:4px 0}.saved-review-card p{margin:0;color:var(--cr-muted)}.saved-review-card small{color:#176b3a;font-weight:700}.saved-review-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.saved-review-summary span{font-size:9px;color:var(--cr-muted)}.saved-review-summary strong{display:block;margin-top:4px;color:var(--cr-ink);font-size:11px}@media(max-width:760px){.saved-review-tools{width:100%;flex-direction:column;align-items:stretch}.saved-review-card{grid-template-columns:1fr}.saved-review-summary{grid-template-columns:1fr 1fr}.saved-review-card .reports-btn{width:100%}}
