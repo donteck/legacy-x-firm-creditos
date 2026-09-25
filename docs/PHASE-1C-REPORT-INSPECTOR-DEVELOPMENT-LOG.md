@@ -141,7 +141,7 @@ The current Inspector combines normalized account review, discrepancy documentat
 
 ### Remaining Phase 1C Work
 
-- Inspector/mobile UX refinement
+- ~~Inspector/mobile UX refinement~~ — implemented in commit `969f28d`; responsive single-column review panels, touch-friendly save controls, improved textarea sizing, and small-screen readability.
 - Phase 1C end-to-end testing
 - Phase 1D manual verification/editing
 - Preserve original values when edits are introduced
