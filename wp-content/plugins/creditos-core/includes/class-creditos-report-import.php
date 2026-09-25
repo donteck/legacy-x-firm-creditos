@@ -39,7 +39,9 @@ class CreditOS_Report_Import {
         }
         $count=0; foreach($snapshot as $rows)$count+=count($rows); if($count<1)return false;
         $version=1+(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COALESCE(MAX(version_number),0) FROM {$p}creditos_report_versions WHERE report_id=%d AND client_id=%d",$rid,$cid));
-        $ok=$this->wpdb->insert($p.'creditos_report_versions',array('report_id'=>$rid,'client_id'=>$cid,'version_number'=>$version,'event_type'=>sanitize_key($event_type),'snapshot'=>($snapshot_json=wp_json_encode($snapshot)),'snapshot_hash'=>hash('sha256',$snapshot_json),'record_count'=>$count,'created_by'=>get_current_user_id(),'created_at'=>current_time('mysql')));
+        $snapshot_json=wp_json_encode($snapshot);
+        if(false===$snapshot_json||''===$snapshot_json)return false;
+        $ok=$this->wpdb->insert($p.'creditos_report_versions',array('report_id'=>$rid,'client_id'=>$cid,'version_number'=>$version,'event_type'=>sanitize_key($event_type),'snapshot'=>$snapshot_json,'snapshot_hash'=>hash('sha256',$snapshot_json),'record_count'=>$count,'created_by'=>get_current_user_id(),'created_at'=>current_time('mysql')));
         if(!$ok)return false;
         return array('version_number'=>$version,'record_count'=>$count,'event_type'=>sanitize_key($event_type));
     }
