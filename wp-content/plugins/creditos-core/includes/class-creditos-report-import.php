@@ -3,7 +3,20 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 class CreditOS_Report_Import {
     private $repository; private $wpdb;
-    public function __construct( CreditOS_Repository $repository ) { global $wpdb; $this->repository=$repository; $this->wpdb=$wpdb; add_action('init',array($this,'maybe_install_schema'),5); add_action('rest_api_init',array($this,'register_routes')); }
+    public function __construct( CreditOS_Repository $repository ) { global $wpdb; $this->repository=$repository; $this->wpdb=$wpdb; add_action('init',array($this,'maybe_install_schema'),5); add_action('rest_api_init',array($this,'register_routes')); add_filter('wp_get_attachment_url',array($this,'hide_private_report_attachment_url'),10,2); add_action('template_redirect',array($this,'block_private_report_attachment_page')); }
+
+    public function hide_private_report_attachment_url($url,$attachment_id){
+        if('1'===get_post_meta(absint($attachment_id),'_creditos_private',true))return '';
+        return $url;
+    }
+
+    public function block_private_report_attachment_page(){
+        if(!is_attachment())return;
+        $attachment_id=get_queried_object_id();
+        if(!$attachment_id||'1'!==get_post_meta($attachment_id,'_creditos_private',true))return;
+        status_header(404);nocache_headers();
+        exit;
+    }
 
     public function maybe_install_schema(){
         $this->ensure_phase1b_tradeline_columns();
