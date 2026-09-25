@@ -77,7 +77,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reviews',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_saved_reviews'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/review-history',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_review_history'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/corrections',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_tradeline_corrections'),'permission_callback'=>array($this,'client_access')));
-        register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/corrections',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_tradeline_correction'),'permission_callback'=>array($this,'logged_in')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/corrections',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_tradeline_correction'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/diagnostics',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'diagnostics'),'permission_callback'=>array($this,'staff_only')));
     }
     public function logged_in(){return is_user_logged_in();}
