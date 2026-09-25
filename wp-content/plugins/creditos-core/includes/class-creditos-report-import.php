@@ -40,8 +40,8 @@ class CreditOS_Report_Import {
         $count=0; foreach($snapshot as $rows)$count+=count($rows); if($count<1)return false;
         $version=1+(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COALESCE(MAX(version_number),0) FROM {$p}creditos_report_versions WHERE report_id=%d AND client_id=%d",$rid,$cid));
         $ok=$this->wpdb->insert($p.'creditos_report_versions',array('report_id'=>$rid,'client_id'=>$cid,'version_number'=>$version,'event_type'=>sanitize_key($event_type),'snapshot'=>($snapshot_json=wp_json_encode($snapshot)),'snapshot_hash'=>hash('sha256',$snapshot_json),'record_count'=>$count,'created_by'=>get_current_user_id(),'created_at'=>current_time('mysql')));
-        if($ok)$this->repository->audit(get_current_user_id(),$cid,'credit_report_version_created','credit_report',$rid,array('version_number'=>$version,'record_count'=>$count,'event_type'=>$event_type));
-        return(bool)$ok;
+        if(!$ok)return false;
+        return array('version_number'=>$version,'record_count'=>$count,'event_type'=>sanitize_key($event_type));
     }
 
     private function ensure_phase1b_tradeline_columns(){
@@ -250,13 +250,15 @@ class CreditOS_Report_Import {
         if($write_failed||$this->wpdb->last_error){$db_error=(string)$this->wpdb->last_error;$this->wpdb->query('ROLLBACK');$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>'Normalized records could not be saved. Previous normalized data was preserved.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));$this->repository->audit(get_current_user_id(),$cid,'credit_report_replacement_aborted','credit_report',$rid,array('stage'=>'insert','database_error_present'=>$db_error!==''));return false;}
         $counts=array();foreach(array('tradelines','collections','inquiries','personal_information')as$table)$counts[$table]=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_{$table} WHERE report_id=%d AND client_id=%d",$rid,$cid));
         $total=array_sum($counts);if($total<1){$this->wpdb->query('ROLLBACK');$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'needs_review','error_message'=>'No structured credit records were extracted. Previous normalized data was preserved.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));$this->repository->audit(get_current_user_id(),$cid,'credit_report_normalization_empty','credit_report',$rid,$counts);return false;}
-        if(!$this->create_report_version($rid,$cid,$event_type)){
+        $version_result=$this->create_report_version($rid,$cid,$event_type);
+        if(!$version_result){
             $this->wpdb->query('ROLLBACK');
             $this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>'Normalized records could not be versioned. Existing records were preserved.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));
             $this->repository->audit(get_current_user_id(),$cid,'credit_report_version_failed','credit_report',$rid,array('event_type'=>$event_type));
             return false;
         }
         $this->wpdb->query('COMMIT');
+        $this->repository->audit(get_current_user_id(),$cid,'credit_report_version_created','credit_report',$rid,$version_result);
         $this->wpdb->update($p.'creditos_credit_reports',array('status'=>'ready_for_review','parser_status'=>'normalized','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));return true;}
 
     private function report_payload($rid,$cid){$p=$this->wpdb->prefix;$report=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,provider,report_date,imported_at,status,parser_status,source_format,source_filename,error_message FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid),ARRAY_A);if(!$report)return null;$report['tradelines']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,account_number_masked,account_type,opened_date,status,status_updated,balance,credit_limit,past_due,payment_status,balance_updated,date_reported,remarks,responsibility,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_tradelines WHERE report_id=%d AND client_id=%d ORDER BY creditor_name",$rid,$cid),ARRAY_A);$report['collections']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,collector_name,original_creditor,balance,assigned_date,status,created_at FROM {$p}creditos_collections WHERE report_id=%d AND client_id=%d ORDER BY collector_name",$rid,$cid),ARRAY_A);$report['inquiries']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,inquiry_type,inquiry_date,created_at FROM {$p}creditos_inquiries WHERE report_id=%d AND client_id=%d ORDER BY inquiry_date DESC",$rid,$cid),ARRAY_A);$report['personal_information']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,info_type,info_value,status,created_at FROM {$p}creditos_personal_information WHERE report_id=%d AND client_id=%d ORDER BY info_type,info_value",$rid,$cid),ARRAY_A);return$report;}
