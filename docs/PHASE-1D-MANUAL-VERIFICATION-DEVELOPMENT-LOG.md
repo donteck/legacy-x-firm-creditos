@@ -103,3 +103,20 @@ After this gate passes, Phase 1 can be closed and Phase 2 — 3-Bureau Intellige
 - Data-query ownership checks remain scoped by the authenticated CreditOS client, report ID and tradeline ID where applicable.
 - Report-version snapshots now use SHA-256 integrity hashes for newly created versions; hashed snapshots are verified before comparison and mismatches are blocked/audited.
 - Legacy report versions without a stored hash remain readable/comparable as legacy-unverified data rather than being broken by the upgrade.
+
+
+## Phase 1F Security & Integrity Hardening — September 25, 2026
+- Report REST payloads use explicit field allowlists so future database columns are not automatically exposed through client APIs.
+- Primary and legacy parser failures return controlled client-safe messages instead of raw parser or exception details.
+- The legacy post-import processor is no longer automatically registered; the primary transactional importer is the single processing authority for current imports.
+- Report-version creation validates JSON encoding before persistence and stores a SHA-256 snapshot hash.
+- Successful report-version audit events are emitted only after the normalization transaction commits.
+- Version comparison rejects both hash mismatches and malformed snapshot JSON with a controlled integrity error and safe audit metadata.
+- Private report attachments are hidden from normal WordPress attachment URL generation and private attachment pages return 404.
+- New private report uploads attempt owner-only 0600 filesystem permissions and fail closed: if permissions cannot be verified, the attachment is deleted and the import is rejected.
+- IMPORTANT: WordPress metadata, hidden attachment URLs, and filesystem permissions are defense-in-depth only. Phase 1 does not claim direct static /wp-content/uploads/ URL isolation until Hestia/nginx/Apache or non-public storage enforcement is implemented and verified.
+
+### Remaining Phase 1F Gate
+- Verify direct source-file isolation at the web-server/storage layer.
+- Run the authenticated Phase 1 final readiness regression gate.
+- Do not declare Phase 1 complete until both security/storage verification and the authenticated readiness checks pass.
