@@ -23,6 +23,9 @@ printf 'Checking remote WordPress path...\n'
 printf 'Creating CreditOS destination directories...\n'
 "${SSH[@]}" "$REMOTE" "mkdir -p '$HESTIA_PATH/wp-content/themes/creditos' '$HESTIA_PATH/wp-content/plugins/creditos-core' '$HESTIA_PATH/wp-content/plugins/creditos-personal' '$HESTIA_PATH/wp-content/plugins/creditos-business'"
 
+printf 'Checking private report storage prerequisites...\n'
+"${SSH[@]}" "$REMOTE" "UPLOADS='$HESTIA_PATH/wp-content/uploads'; test -d \"\$UPLOADS\" || mkdir -p \"\$UPLOADS\"; test -w \"\$UPLOADS\" || { echo 'WordPress uploads directory is not writable'; exit 1; }"
+
 printf 'Deploying CreditOS theme...\n'
 rsync -az --delete \
   -e "$RSYNC_SSH" \
@@ -49,5 +52,8 @@ rsync -az --delete \
 
 printf 'Verifying deployed files...\n'
 "${SSH[@]}" "$REMOTE" "test -f '$HESTIA_PATH/wp-content/themes/creditos/style.css' && test -f '$HESTIA_PATH/wp-content/plugins/creditos-core/creditos-core.php'"
+
+printf 'Verifying report-storage filesystem policy...\n'
+"${SSH[@]}" "$REMOTE" "test -w '$HESTIA_PATH/wp-content/uploads' || { echo 'CreditOS report storage verification failed'; exit 1; }"
 
 printf 'CreditOS deployment completed successfully.\n'
