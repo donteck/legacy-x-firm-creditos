@@ -214,3 +214,15 @@ Phase 1D — Manual Verification & Editing begins only after the Phase 1C test g
 Saved tradeline reviews now record `reviewed_by` and `reviewed_at` in addition to the structured review content. This strengthens retrieval and auditability by preserving which authenticated WordPress user last saved the review and when the save occurred. The original normalized account values remain separate from review metadata.
 
 Implementation commit: `b47b67a`.
+
+
+## Saved Review Retrieval
+
+Phase 1C now includes a client-scoped saved-review retrieval workflow. The `GET /creditos/v1/reviews` endpoint returns previously reviewed tradelines and supports review-status filtering. The Credit Report Center includes a responsive Saved Reviews section showing review status, discrepancy status, evidence status, and last-saved metadata. Open Review resolves the saved record by its unique tradeline ID so multiple accounts from the same creditor remain isolated.
+
+Review saves also persist `reviewed_by` and `reviewed_at`, and the Inspector refreshes the Last Saved indicator immediately after a successful save.
+
+Implementation commits: `9c612f8`, `2703996`, `0a74cb6`, `e43f8df`, `9214ef2`, `1dc7ef0`.
+
+### Remaining Phase 1C completion gate
+The code path is implemented and deployment validation is passing for completed runs. Phase 1C is not marked complete until an authenticated end-to-end UI test confirms: save a review, reopen it from Saved Reviews, verify all review/discrepancy/evidence values persist, verify a second tradeline remains independent, and confirm normalized account counts/data are unchanged by review-only actions.
