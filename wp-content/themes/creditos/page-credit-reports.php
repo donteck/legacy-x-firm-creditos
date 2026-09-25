@@ -24,6 +24,7 @@ $display_name = $user->display_name ? $user->display_name : $user->user_login;
       <a href="#connect">Connect a Bureau</a>
       <a href="#history">Report History</a>
       <a href="#review">Import Review</a>
+      <a href="#saved-reviews">Saved Reviews</a>
       <a href="#data">Normalized Data</a>
     </nav>
     <div class="reports-side-note"><strong>Phase 1</strong><p>Clients can start with either secure file upload or an authorized bureau/provider connection.</p></div>
@@ -75,6 +76,8 @@ $display_name = $user->display_name ? $user->display_name : $user->user_login;
       <section class="reports-section" id="history"><div class="section-head"><div><small>REPORT HISTORY</small><h2>Your imported reports</h2></div><button id="creditos-refresh-reports" class="reports-btn" type="button">Refresh</button></div><div id="creditos-report-list" class="report-list"><div class="empty-state">Loading report history…</div></div></section>
 
       <section class="reports-section" id="review"><div class="section-head"><div><small>IMPORT REVIEW</small><h2>Selected report</h2></div></div><div id="creditos-report-review" class="review-panel"><div class="empty-state">Select a report from your history to review imported records.</div></div></section>
+
+      <section class="reports-section" id="saved-reviews"><div class="section-head"><div><small>REVIEW HISTORY</small><h2>Saved Reviews</h2><p class="section-copy">Retrieve accounts you previously reviewed and continue your work.</p></div><div class="saved-review-tools"><select id="creditos-review-filter" aria-label="Filter saved reviews"><option value="">All statuses</option><option value="needs_review">Needs Review</option><option value="verified">Verified</option><option value="potential_inaccuracy">Potential Inaccuracy</option><option value="missing_evidence">Missing Evidence</option><option value="ignore">Ignore</option></select><button id="creditos-refresh-reviews" class="reports-btn" type="button">Refresh</button></div></div><div id="creditos-saved-reviews" class="saved-review-list"><div class="empty-state">Loading saved reviews…</div></div></section>
 
       <section class="reports-section" id="data"><div class="section-head"><div><small>NORMALIZED CREDIT DATA</small><h2>Phase 1 data domains</h2></div></div><div class="domain-grid"><article><strong>Tradelines</strong><p>Creditor, masked account, type, balance, limit, dates, status, bureau, remarks.</p></article><article><strong>Collections</strong><p>Collector, original creditor, balance, status, assigned date, bureau.</p></article><article><strong>Inquiries</strong><p>Creditor, inquiry date, inquiry type, bureau.</p></article><article><strong>Personal Information</strong><p>Reported names, addresses, employers, and other report identity variants.</p></article></div></section>
     </main>
