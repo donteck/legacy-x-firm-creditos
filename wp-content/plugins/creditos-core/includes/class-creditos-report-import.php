@@ -125,7 +125,7 @@ class CreditOS_Report_Import {
         $path=get_attached_file($aid); $checksum=$path&&file_exists($path)?hash_file('sha256',$path):false;
         $source_ok=$checksum&&$this->wpdb->insert($this->wpdb->prefix.'creditos_credit_report_sources',array('report_id'=>$rid,'bureau'=>$bureau,'source_type'=>'upload','provider'=>'manual_upload','raw_reference'=>(string)$aid,'checksum'=>$checksum,'created_at'=>$now));
         if(!$source_ok){$this->wpdb->delete($t,array('id'=>$rid,'client_id'=>absint($c->id)));wp_delete_attachment($aid,true);return new WP_Error('creditos_report_source_failed','CreditOS could not securely register the report source. The upload was removed.',array('status'=>500));}
-        $this->repository->audit(get_current_user_id(),$c->id,'credit_report_uploaded','credit_report',$rid,array('bureau'=>$bureau,'format'=>$ext));
+        $this->repository->audit(get_current_user_id(),$c->id,'credit_report_uploaded','credit_report',$rid,array('bureau'=>$bureau,'format'=>$ext,'checksum_verified'=>true));
         $this->process_report($rid,$c->id,$path,$ext,$bureau);
         return rest_ensure_response(array('success'=>true,'report_id'=>$rid,'report'=>$this->report_payload($rid,$c->id)));
     }
@@ -134,6 +134,14 @@ class CreditOS_Report_Import {
         $t=$this->wpdb->prefix.'creditos_credit_reports'; $this->wpdb->update($t,array('status'=>'processing','parser_status'=>'processing','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));
         try{
             if(!$path||!file_exists($path)){ $this->mark_failed($rid,$cid,'Uploaded source file is unavailable on the server.'); return false; }
+            $source=$this->wpdb->get_row($this->wpdb->prepare("SELECT checksum FROM {$this->wpdb->prefix}creditos_credit_report_sources WHERE report_id=%d ORDER BY id DESC LIMIT 1",$rid),ARRAY_A);
+            $stored_checksum=is_array($source)?(string)($source['checksum']??''):'';
+            $current_checksum=hash_file('sha256',$path);
+            if(!$stored_checksum||!$current_checksum||!hash_equals($stored_checksum,$current_checksum)){
+                $this->mark_failed($rid,$cid,'The uploaded report source failed its integrity check and cannot be processed.');
+                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('checksum_present'=>(bool)$stored_checksum));
+                return false;
+            }
             if('json'===$ext){$payload=json_decode(file_get_contents($path),true); if(!is_array($payload)){ $this->mark_failed($rid,$cid,'JSON could not be parsed.'); return false; } return $this->apply_normalized_payload($rid,$cid,$payload,$event_type);}
             $parser=new CreditOS_Report_Parser(); $parsed=$parser->parse($path,$ext,$bureau);
             if(is_wp_error($parsed)){ $code=sanitize_key($parsed->get_error_code()); $status=('creditos_pdf_needs_ocr'===$code)?'needs_ocr':'failed'; $safe_errors=array('creditos_pdf_needs_ocr'=>'This PDF needs OCR or a text-readable copy before CreditOS can normalize it.'); $safe_error=$safe_errors[$code]??'CreditOS could not safely normalize this report. The source file was preserved for review.'; $this->wpdb->update($t,array('status'=>'needs_review','parser_status'=>$status,'error_message'=>$safe_error,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid)); $this->repository->audit(get_current_user_id(),$cid,'credit_report_parse_failed','credit_report',$rid,array('code'=>$code)); return false; }
