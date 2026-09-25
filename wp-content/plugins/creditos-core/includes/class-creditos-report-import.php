@@ -208,7 +208,13 @@ class CreditOS_Report_Import {
         $field=sanitize_key($data['field_name']??''); if(!in_array($field,$allowed,true))return new WP_Error('creditos_correction_field_invalid','Choose a valid account field.',array('status'=>400));
         $row=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id),ARRAY_A);
         if(!$row)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));
-        $reviewed=sanitize_textarea_field((string)($data['reviewed_value']??'')); $reason=sanitize_textarea_field((string)($data['reason']??''));
+        $raw=(string)($data['reviewed_value']??'');
+        if(in_array($field,array('opened_date','status_updated','balance_updated'),true)){$reviewed=$this->clean_date($raw); if($raw!==''&&!$reviewed)return new WP_Error('creditos_correction_value_invalid','Enter a valid date for this field.',array('status'=>400));}
+        elseif(in_array($field,array('balance','credit_limit','past_due'),true)){$reviewed=$raw===''?'':$this->money($raw); if($raw!==''&&$reviewed===null)return new WP_Error('creditos_correction_value_invalid','Enter a valid numeric amount for this field.',array('status'=>400));}
+        elseif($field==='remarks'){$reviewed=sanitize_textarea_field($raw);}
+        else{$reviewed=sanitize_text_field($raw);}
+        if($field==='account_number_masked'&&$reviewed!==''&&!preg_match('/[*xX•#-]/u',$reviewed))return new WP_Error('creditos_account_mask_required','Only a masked account number may be stored.',array('status'=>400));
+        $reason=sanitize_textarea_field((string)($data['reason']??''));
         if(''===$reason)return new WP_Error('creditos_correction_reason_required','Enter a reason for the reviewed value.',array('status'=>400));
         $now=current_time('mysql'); $ct=$this->wpdb->prefix.'creditos_tradeline_corrections';
         $ok=$this->wpdb->insert($ct,array('report_id'=>$rid,'tradeline_id'=>$tid,'client_id'=>$client->id,'field_name'=>$field,'original_value'=>(string)($row[$field]??''),'reviewed_value'=>$reviewed,'reason'=>$reason,'reviewed_by'=>get_current_user_id(),'reviewed_at'=>$now,'created_at'=>$now));
