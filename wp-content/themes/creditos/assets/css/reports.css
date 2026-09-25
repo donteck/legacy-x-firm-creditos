@@ -91,3 +91,18 @@ body.creditos-reports-page{font-family:Inter,ui-sans-serif,system-ui,-apple-syst
 .review-history-item em{grid-column:1/-1;font-size:.67rem;color:#176b3a;font-style:normal;font-weight:800}
 @media(max-width:800px){.review-history-item{grid-template-columns:1fr 1fr}.review-history-item>div{grid-column:1/-1}}
 @media(max-width:520px){.review-history-panel{padding:14px}.review-history-item{grid-template-columns:1fr}.review-history-item>div{grid-column:auto}}
+
+/* Phase 1D/1E — Report Version History */
+.report-version-history{margin:16px 0 20px;padding:18px;border:1px solid rgba(23,107,58,.22);border-radius:16px;background:#fbfdfb}
+.report-version-list{display:grid;gap:9px;margin-top:12px}
+.report-version-item{display:grid;grid-template-columns:minmax(160px,1.5fr) minmax(90px,.7fr) minmax(110px,.8fr);gap:12px;align-items:center;padding:13px 15px;border:1px solid rgba(16,32,24,.09);border-radius:12px;background:#fff}
+.report-version-item>div b,.report-version-item>div small{display:block}
+.report-version-item>div b{color:#102018}
+.report-version-item>div small{margin-top:3px;color:#607068;font-size:.72rem}
+.report-version-item>span{font-weight:800;color:#102018}
+.report-version-item>em{justify-self:end;padding:5px 8px;border-radius:999px;background:#f1f5f1;color:#607068;font-size:.68rem;font-style:normal;font-weight:800}
+.report-version-item.is-current{border-color:rgba(84,185,72,.48);box-shadow:inset 3px 0 0 #54b948;background:linear-gradient(180deg,#fff,#eff9ed)}
+.report-version-item.is-current>div b{color:#176b3a}
+.report-version-item.is-current>em{background:#176b3a;color:#fff}
+@media(max-width:650px){.report-version-history{padding:14px}.report-version-item{grid-template-columns:1fr 1fr}.report-version-item>div{grid-column:1/-1}.report-version-item>em{justify-self:start}}
+@media(max-width:430px){.report-version-item{grid-template-columns:1fr}.report-version-item>div{grid-column:auto}}
