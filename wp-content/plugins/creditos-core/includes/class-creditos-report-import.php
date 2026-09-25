@@ -49,6 +49,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/reprocess',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'reprocess_report'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reviews',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_saved_reviews'),'permission_callback'=>array($this,'logged_in')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/review-history',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_review_history'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/corrections',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_tradeline_corrections'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/corrections',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_tradeline_correction'),'permission_callback'=>array($this,'logged_in')));
         register_rest_route('creditos/v1','/reports/diagnostics',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'diagnostics'),'permission_callback'=>array($this,'staff_only')));
@@ -105,6 +106,17 @@ class CreditOS_Report_Import {
         $sql="SELECT t.id,t.report_id,t.bureau,t.creditor_name,t.account_number_masked,t.review_status,t.reviewer_notes,t.discrepancy_type,t.discrepancy_field,t.discrepancy_details,t.evidence_status,t.evidence_notes,t.reviewed_by,t.reviewed_at,r.report_date,r.source_filename FROM {$table} t INNER JOIN {$reports} r ON r.id=t.report_id AND r.client_id=t.client_id WHERE {$where} ORDER BY t.reviewed_at DESC,t.id DESC LIMIT 250";
         $rows=$this->wpdb->get_results($this->wpdb->prepare($sql,$args),ARRAY_A);
         return rest_ensure_response(array('reviews'=>$rows,'count'=>count($rows)));
+    }
+
+    public function tradeline_review_history(WP_REST_Request $request){
+        $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
+        $rid=absint($request['id']); $tid=absint($request['tradeline_id']); $table=$this->wpdb->prefix.'creditos_tradelines';
+        $exists=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$table} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id));
+        if(!$exists)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));
+        $audit=$this->wpdb->prefix.'creditos_audit_logs';
+        $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,user_id,metadata,created_at FROM {$audit} WHERE client_id=%d AND action=%s AND entity_type=%s AND entity_id=%d ORDER BY id DESC LIMIT 100",$client->id,'tradeline_review_saved','tradeline',$tid),ARRAY_A);
+        $history=array(); foreach($rows as $row){$meta=json_decode($row['metadata']??'',true); if(!is_array($meta)||absint($meta['report_id']??0)!==$rid)continue; $history[]=array('audit_id'=>absint($row['id']),'reviewed_by'=>absint($row['user_id']),'created_at'=>$row['created_at'],'history_version'=>$meta['history_version']??null,'previous_review'=>$meta['previous_review']??null,'saved_state'=>array('review_status'=>$meta['review_status']??null,'discrepancy_type'=>$meta['discrepancy_type']??null,'discrepancy_field'=>$meta['discrepancy_field']??null,'evidence_status'=>$meta['evidence_status']??null));}
+        return rest_ensure_response(array('history'=>$history,'count'=>count($history)));
     }
 
     public function review_tradeline(WP_REST_Request $request){
