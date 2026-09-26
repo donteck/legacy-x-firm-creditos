@@ -134,7 +134,13 @@ class CreditOS_Report_Import {
         $t=$this->wpdb->prefix.'creditos_credit_reports'; $this->wpdb->update($t,array('status'=>'processing','parser_status'=>'processing','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));
         try{
             if(!$path||!file_exists($path)){ $this->mark_failed($rid,$cid,'Uploaded source file is unavailable on the server.'); return false; }
-            $source=$this->wpdb->get_row($this->wpdb->prepare("SELECT checksum FROM {$this->wpdb->prefix}creditos_credit_report_sources WHERE report_id=%d AND raw_reference=%s ORDER BY id DESC LIMIT 1",$rid,(string)absint($this->wpdb->get_var($this->wpdb->prepare("SELECT source_attachment_id FROM {$this->wpdb->prefix}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid)))),ARRAY_A);
+            $attachment_id=absint($this->wpdb->get_var($this->wpdb->prepare("SELECT source_attachment_id FROM {$this->wpdb->prefix}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid)));
+            if(!$attachment_id||'1'!==get_post_meta($attachment_id,'_creditos_private',true)){
+                $this->mark_failed($rid,$cid,'The uploaded report source failed its security check and cannot be processed.');
+                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>false));
+                return false;
+            }
+            $source=$this->wpdb->get_row($this->wpdb->prepare("SELECT checksum FROM {$this->wpdb->prefix}creditos_credit_report_sources WHERE report_id=%d AND raw_reference=%s ORDER BY id DESC LIMIT 1",$rid,(string)$attachment_id),ARRAY_A);
             $stored_checksum=is_array($source)?(string)($source['checksum']??''):'';
             $current_checksum=hash_file('sha256',$path);
             if(!$stored_checksum||!$current_checksum||!hash_equals($stored_checksum,$current_checksum)){
