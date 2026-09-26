@@ -14,6 +14,8 @@ class CreditOS_Report_Import {
         $path=get_attached_file(absint($attachment_id));
         if(!$path||!file_exists($path))return false;
         if(is_link($path)||!is_file($path))return false;
+        $uploads=wp_get_upload_dir(); $basedir=realpath((string)($uploads['basedir']??'')); $realpath=realpath($path);
+        if(!$basedir||!$realpath||0!==strpos($realpath,rtrim($basedir,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR))return false;
         @chmod($path,0600);
         clearstatcache(true,$path);
         $perms=@fileperms($path);
