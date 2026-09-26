@@ -13,6 +13,7 @@ class CreditOS_Report_Import {
     private function harden_private_report_file($attachment_id){
         $path=get_attached_file(absint($attachment_id));
         if(!$path||!file_exists($path))return false;
+        if(is_link($path)||!is_file($path))return false;
         @chmod($path,0600);
         clearstatcache(true,$path);
         $perms=@fileperms($path);
@@ -141,7 +142,7 @@ class CreditOS_Report_Import {
                 return false;
             }
             clearstatcache(true,$path); $perms=@fileperms($path);
-            if(false===$perms||0600!==($perms&0777)){
+            if(is_link($path)||!is_file($path)||false===$perms||0600!==($perms&0777)){
                 $this->mark_failed($rid,$cid,'The uploaded report source failed its filesystem security check and cannot be processed.');
                 $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>true,'secure_permissions'=>false));
                 return false;
