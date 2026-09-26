@@ -140,6 +140,12 @@ class CreditOS_Report_Import {
                 $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>false));
                 return false;
             }
+            clearstatcache(true,$path); $perms=@fileperms($path);
+            if(false===$perms||0600!==($perms&0777)){
+                $this->mark_failed($rid,$cid,'The uploaded report source failed its filesystem security check and cannot be processed.');
+                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>true,'secure_permissions'=>false));
+                return false;
+            }
             $source=$this->wpdb->get_row($this->wpdb->prepare("SELECT checksum FROM {$this->wpdb->prefix}creditos_credit_report_sources WHERE report_id=%d AND raw_reference=%s ORDER BY id DESC LIMIT 1",$rid,(string)$attachment_id),ARRAY_A);
             $stored_checksum=is_array($source)?(string)($source['checksum']??''):'';
             $current_checksum=hash_file('sha256',$path);
