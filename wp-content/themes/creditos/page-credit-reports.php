@@ -23,7 +23,7 @@ $display_name = $user->display_name ? $user->display_name : $user->user_login;
       <a class="active" href="#import">Bring In Credit Data</a>
       <a href="#connect">Connect a Bureau</a>
       <a href="#history">Report History</a>
-      <a href="#review">Import Review</a>
+      <a href="<?php echo esc_url( home_url( '/report-inspector/' ) ); ?>">Report Inspector</a>
       <a href="#saved-reviews">Saved Reviews</a>
       <a href="#data">Normalized Data</a>
     </nav>
@@ -74,8 +74,6 @@ $display_name = $user->display_name ? $user->display_name : $user->user_login;
       </section>
 
       <section class="reports-section" id="history"><div class="section-head"><div><small>REPORT HISTORY</small><h2>Your imported reports</h2></div><button id="creditos-refresh-reports" class="reports-btn" type="button">Refresh</button></div><div id="creditos-report-list" class="report-list"><div class="empty-state">Loading report history…</div></div></section>
-
-      <section class="reports-section" id="review"><div class="section-head"><div><small>IMPORT REVIEW</small><h2>Selected report</h2></div></div><div id="creditos-report-review" class="review-panel"><div class="empty-state">Select a report from your history to review imported records.</div></div></section>
 
       <section class="reports-section" id="saved-reviews"><div class="section-head"><div><small>REVIEW HISTORY</small><h2>Saved Reviews</h2><p class="section-copy">Retrieve accounts you previously reviewed and continue your work.</p></div><div class="saved-review-tools"><select id="creditos-review-filter" aria-label="Filter saved reviews"><option value="">All statuses</option><option value="needs_review">Needs Review</option><option value="verified">Verified</option><option value="potential_inaccuracy">Potential Inaccuracy</option><option value="missing_evidence">Missing Evidence</option><option value="ignore">Ignore</option></select><button id="creditos-refresh-reviews" class="reports-btn" type="button">Refresh</button></div></div><div id="creditos-saved-reviews" class="saved-review-list"><div class="empty-state">Loading saved reviews…</div></div></section>
 
