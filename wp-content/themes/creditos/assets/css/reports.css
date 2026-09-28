@@ -306,3 +306,13 @@ textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
 .account-context-nav a{color:#176b3a;text-decoration:none;font-weight:900}.account-context-nav a:hover{text-decoration:underline}.account-context-nav strong{color:#102018}
 .creditos-account-page .reports-nav a.active{background:#eaf6e7;color:#176b3a}
 @media(max-width:700px){.account-context-nav{margin-bottom:10px}}
+
+
+/* Account Inspector IA / usability refinement */
+.creditos-account-page .account-context-nav{gap:7px;padding:9px 12px;background:#fbfdfb;border-color:#e0ece0;color:#7b887f}
+.creditos-account-page .account-context-nav span{color:#93a097}.creditos-account-page .account-context-nav strong{color:#176b3a}
+.creditos-account-page .account-workspace-tabs{display:flex;gap:5px;padding:6px;border:1px solid #dcebd9;border-radius:14px;background:#fff;overflow-x:auto;scrollbar-width:thin}
+.creditos-account-page .account-workspace-tabs button{flex:0 0 auto;min-height:38px;padding:8px 13px;border:0;border-radius:9px;background:transparent;color:#5c6961;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}
+.creditos-account-page .account-workspace-tabs button:hover{background:#f3f9f1;color:#176b3a}.creditos-account-page .account-workspace-tabs button.is-active{background:#eaf6e7;color:#176b3a;box-shadow:inset 0 0 0 1px #cfe5cb}
+.creditos-account-page .account-case-progress{overflow-x:auto;scrollbar-width:thin}.creditos-account-page .case-progress-step{min-width:115px}
+@media(max-width:700px){.creditos-account-page .account-context-nav{font-size:9px}.creditos-account-page .account-workspace-tabs button{padding:8px 10px}.creditos-account-page .case-progress-step{min-width:100px}}
