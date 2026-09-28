@@ -283,3 +283,19 @@ textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
 .creditos-inspector-page .report-version-history{margin:0 0 20px;border-radius:18px}
 @media(max-width:850px){.report-review-hero{grid-template-columns:1fr;padding:24px}.report-review-status{min-width:0}.creditos-inspector-page .review-summary{grid-template-columns:1fr 1fr}.report-review-jump{top:6px}.report-record-section{padding:14px}}
 @media(max-width:520px){.creditos-inspector-page .review-summary{grid-template-columns:1fr 1fr;gap:8px}.creditos-inspector-page .review-stat{padding:14px}.creditos-inspector-page .review-stat strong{font-size:21px}.report-review-hero{padding:21px 18px}.report-record-section{padding:11px;border-radius:15px}.report-review-jump{margin-left:-2px;margin-right:-2px}}
+
+
+/* Report Inspector viewport-fit hotfix v4.1 */
+.creditos-inspector-page .reports-main{width:auto;max-width:none;min-width:0;margin:0;padding-left:24px;padding-right:24px}
+.creditos-inspector-page .reports-shell,.creditos-inspector-page .reports-content,.creditos-inspector-page #creditos-report-review{min-width:0;max-width:100%;box-sizing:border-box}
+.creditos-inspector-page .report-record-section{min-width:0;overflow:hidden}
+.creditos-inspector-page .table-scroll{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+.creditos-inspector-page .review-table{width:100%;min-width:980px;table-layout:auto}
+.creditos-inspector-page .review-table th,.creditos-inspector-page .review-table td{padding:11px 10px;font-size:10px;line-height:1.35}
+.creditos-inspector-page .review-table th:first-child,.creditos-inspector-page .review-table td:first-child{min-width:150px}
+.creditos-inspector-page .review-table th:last-child,.creditos-inspector-page .review-table td:last-child{right:0;min-width:138px;background:#fff;box-shadow:-10px 0 18px rgba(16,32,24,.04)}
+.creditos-inspector-page .review-table tbody tr:hover td:last-child{background:#fbfefb}
+.creditos-inspector-page .inspect-account{display:inline-flex;align-items:center;justify-content:center;width:100%;min-width:118px;white-space:nowrap}
+.creditos-inspector-page .review-summary{grid-template-columns:repeat(4,minmax(120px,1fr))}
+@media(max-width:1100px){.creditos-inspector-page .reports-main{padding-left:16px;padding-right:16px}.creditos-inspector-page .review-table{min-width:900px}.creditos-inspector-page .review-summary{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.creditos-inspector-page .reports-main{padding-left:10px;padding-right:10px}.creditos-inspector-page .review-table{min-width:0}.creditos-inspector-page .review-table th:last-child,.creditos-inspector-page .review-table td:last-child{position:static;min-width:0;box-shadow:none}.creditos-inspector-page .review-summary{grid-template-columns:1fr 1fr}}
