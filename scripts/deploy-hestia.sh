@@ -62,4 +62,7 @@ printf 'Auditing web-server report-source isolation...\n'
 printf 'Checking for an explicit CreditOS report isolation marker...\n'
 "${SSH[@]}" "$REMOTE" "MARKER='$HESTIA_PATH/../.creditos-report-isolation-verified'; if test -f \"\$MARKER\"; then echo 'CreditOS report isolation marker present'; else echo 'WARNING: CreditOS direct static report isolation has not been verified on this host'; fi"
 
+printf 'Auditing public upload-tree exposure for CreditOS report artifacts...\n'
+"${SSH[@]}" "$REMOTE" "FOUND=0; for F in \$(find '$HESTIA_PATH/wp-content/uploads' -type f -perm 0600 2>/dev/null | head -n 20); do FOUND=1; case \"\$F\" in '$HESTIA_PATH/wp-content/uploads/'*) ;; *) echo 'ERROR: unexpected report candidate path'; exit 1;; esac; done; if test \"\$FOUND\" = 1; then echo 'Private-permission upload candidates exist under the public web root; server-level denial/non-public storage is still required'; else echo 'No 0600 upload candidates found during deployment audit'; fi"
+
 printf 'CreditOS deployment completed successfully.\n'
