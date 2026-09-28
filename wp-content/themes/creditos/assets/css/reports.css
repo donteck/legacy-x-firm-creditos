@@ -316,3 +316,16 @@ textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
 .creditos-account-page .account-workspace-tabs button:hover{background:#f3f9f1;color:#176b3a}.creditos-account-page .account-workspace-tabs button.is-active{background:#eaf6e7;color:#176b3a;box-shadow:inset 0 0 0 1px #cfe5cb}
 .creditos-account-page .account-case-progress{overflow-x:auto;scrollbar-width:thin}.creditos-account-page .case-progress-step{min-width:115px}
 @media(max-width:700px){.creditos-account-page .account-context-nav{font-size:9px}.creditos-account-page .account-workspace-tabs button{padding:8px 10px}.creditos-account-page .case-progress-step{min-width:100px}}
+
+
+/* Guided Account Review */
+.guided-account-review{display:grid;gap:18px}
+.guided-review-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.guided-review-steps>div{position:relative;min-height:112px;padding:16px 14px 14px 46px;border:1px solid #dcebd9;border-radius:14px;background:#fbfdfb}
+.guided-review-steps span{position:absolute;left:14px;top:15px;display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#eaf6e7;color:#176b3a;font-size:9px;font-weight:900}
+.guided-review-steps strong,.guided-review-steps small{display:block}.guided-review-steps strong{color:#102018;font-size:11px}.guided-review-steps small{margin-top:6px;color:#718077;font-size:9px;line-height:1.5}
+.guided-review-decision{display:grid;grid-template-columns:minmax(220px,.45fr) minmax(0,1fr);gap:12px}.guided-review-decision label{display:flex;flex-direction:column;gap:7px;color:#526158;font-size:10px;font-weight:900}.guided-review-decision select,.guided-review-decision textarea{width:100%;box-sizing:border-box}
+.guided-review-save{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:17px 18px;border:1px solid #cfe3cc;border-radius:14px;background:linear-gradient(135deg,#f8fcf7,#fff)}
+.guided-review-save small,.guided-review-save strong,.guided-review-save p{display:block}.guided-review-save small{color:#54b948;font-size:8px;font-weight:900;letter-spacing:.12em}.guided-review-save strong{margin-top:4px;color:#102018;font-size:13px}.guided-review-save p{margin:5px 0 0;color:#748078;font-size:9px}.guided-review-save>div:last-child{display:flex;align-items:center;gap:10px}.guided-review-save .reports-btn.primary{min-width:170px}
+@media(max-width:900px){.guided-review-steps{grid-template-columns:1fr 1fr}.guided-review-decision{grid-template-columns:1fr}.guided-review-save{align-items:flex-start;flex-direction:column}}
+@media(max-width:520px){.guided-review-steps{grid-template-columns:1fr}.guided-review-save>div:last-child{width:100%;align-items:stretch;flex-direction:column}.guided-review-save .reports-btn.primary{width:100%}}
