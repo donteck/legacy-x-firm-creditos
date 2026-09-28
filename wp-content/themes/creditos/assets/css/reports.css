@@ -202,3 +202,16 @@ textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
 .case-progress-step.is-complete span{border-color:var(--cx-green,#176b3a);background:var(--cx-green,#176b3a);color:#fff}
 .case-progress-step.is-complete:not(:last-child):after{background:#9fd096}
 .case-progress-step.is-complete small{color:var(--cx-green,#176b3a)}
+
+.delivery-timeline{margin:0 0 18px;padding:18px;border:1px solid #d8ead5;border-radius:16px;background:linear-gradient(145deg,#fbfefb,#f3faf1)}
+.delivery-timeline-head{display:flex;justify-content:space-between;gap:16px;align-items:center;padding-bottom:14px;border-bottom:1px solid #dfeadd}
+.delivery-timeline-head small,.delivery-deadline small{display:block;color:#65736a;font-size:9px;font-weight:900;letter-spacing:.12em}
+.delivery-timeline-head strong{display:block;margin-top:4px;color:#176b3a}.delivery-timeline-head>span{font-size:11px;color:#65736a}.delivery-timeline-head b{display:block;margin-top:3px;color:#102018;font-size:12px}
+.delivery-timeline-steps{display:grid;grid-template-columns:repeat(4,1fr);padding:18px 0 8px}
+.delivery-timeline-step{position:relative;display:flex;gap:9px;align-items:flex-start;color:#89948d}
+.delivery-timeline-step:not(:last-child):after{content:"";position:absolute;left:14px;right:-1px;top:7px;height:2px;background:#dce7da}
+.delivery-timeline-step i{position:relative;z-index:1;width:14px;height:14px;flex:0 0 14px;border:2px solid #d5e2d3;border-radius:50%;background:#fff}
+.delivery-timeline-step strong,.delivery-timeline-step small{display:block}.delivery-timeline-step strong{font-size:11px;color:#65736a}.delivery-timeline-step small{margin-top:3px;font-size:9px}
+.delivery-timeline-step.is-complete i,.delivery-timeline-step.is-current i{border-color:#54b948;background:#54b948}.delivery-timeline-step.is-complete:not(:last-child):after{background:#9fd096}.delivery-timeline-step.is-complete strong,.delivery-timeline-step.is-current strong{color:#176b3a}.delivery-timeline-step.is-current i{box-shadow:0 0 0 4px rgba(84,185,72,.12)}
+.delivery-deadline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid #dcebd9}.delivery-deadline strong{color:#102018}
+@media(max-width:650px){.delivery-timeline-head{align-items:flex-start;flex-direction:column}.delivery-timeline-steps{grid-template-columns:1fr;gap:12px}.delivery-timeline-step:not(:last-child):after{left:7px;right:auto;top:14px;bottom:-14px;width:2px;height:auto}}
