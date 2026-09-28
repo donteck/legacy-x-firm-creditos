@@ -140,3 +140,52 @@ body.creditos-reports-page{font-family:Inter,ui-sans-serif,system-ui,-apple-syst
 .evidence-files{margin-top:16px;padding-top:16px;border-top:1px solid #e3eee1}.evidence-upload-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.evidence-upload-row input[type=file]{flex:1;min-width:220px;padding:10px;border:1px solid #d9e8d7;border-radius:12px;background:#fbfdfb}.evidence-files>small{display:block;margin-top:8px;color:#65736a}.evidence-file-list{display:grid;gap:10px;margin-top:14px}.evidence-file-list article{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:13px 14px;border:1px solid #e3eee1;border-radius:13px;background:#fbfdfb}.evidence-file-list strong,.evidence-file-list small{display:block}.evidence-file-list small,.evidence-file-list span{color:#65736a;font-size:12px}#creditos-evidence-message{margin-top:10px;font-weight:600;color:#176b3a}@media(max-width:620px){.evidence-upload-row{align-items:stretch}.evidence-upload-row input[type=file],.evidence-upload-row .reports-btn{width:100%}.evidence-file-list article{align-items:flex-start;flex-direction:column}}
 
 .evidence-file-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}.evidence-file-actions select{max-width:150px;padding:7px 9px;border:1px solid #d9e8d7;border-radius:9px;background:#fff;color:#102018;font-size:12px}.evidence-file-actions button{padding:7px 10px;border-radius:9px;border:1px solid #cfe3cc;background:#fff;color:#176b3a;font-weight:700;cursor:pointer}.evidence-file-actions .evidence-remove{color:#7b3434;border-color:#ead3d3}@media(max-width:760px){.evidence-file-actions{width:100%;justify-content:flex-start}.evidence-file-actions select{max-width:none;flex:1 1 140px}}
+
+
+/* CreditOS workflow UX v2 — cohesive review → delivery workspace */
+.creditos-account-page{--cx-green:#176b3a;--cx-bright:#54b948;--cx-ink:#102018;--cx-muted:#65736a;--cx-line:#dcebd9;--cx-soft:#f4faf2;--cx-warn:#fff9eb;--cx-shadow:0 18px 50px rgba(16,32,24,.08)}
+.creditos-account-page .reports-main{max-width:1220px}
+.creditos-account-page #creditos-report-review{display:grid;gap:18px}
+.account-data-hero{box-shadow:var(--cx-shadow);border-color:#d4e8d1;background:linear-gradient(135deg,#fff 0%,#f7fcf5 100%)}
+.account-data-hero h2{letter-spacing:-.03em;color:var(--cx-ink)}
+.account-health-bar>div{min-height:82px;box-shadow:0 8px 24px rgba(16,32,24,.04)}
+.account-health-bar strong{font-size:1.05rem}
+.account-workspace-tabs{top:12px;box-shadow:0 12px 34px rgba(16,32,24,.07);scrollbar-width:thin}
+.account-workspace-tabs button{transition:.18s ease}
+.account-workspace-tabs button:hover{background:#f5faf3;color:var(--cx-green)}
+.account-workspace-tabs button.is-active{box-shadow:inset 0 0 0 1px #cce5c8}
+.dispute-candidate-box,.case-preparation-panel,.drafting-workspace,.legal-review-workspace,.final-approval-workspace,.delivery-tracking-workspace,.account-entry-state{margin-top:18px;padding:24px;border:1px solid var(--cx-line);border-radius:20px;background:#fff;box-shadow:0 10px 32px rgba(16,32,24,.045)}
+.case-preparation-panel,.drafting-workspace,.legal-review-workspace,.final-approval-workspace,.delivery-tracking-workspace{position:relative;overflow:hidden}
+.case-preparation-panel:before,.drafting-workspace:before,.legal-review-workspace:before,.final-approval-workspace:before,.delivery-tracking-workspace:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#d9ead5}
+.legal-review-workspace:before,.final-approval-workspace:before{background:var(--cx-bright)}
+.delivery-tracking-workspace:before{background:var(--cx-green)}
+.discrepancy-title{margin-bottom:18px}
+.discrepancy-title small{display:block;color:var(--cx-green);font-size:10px;font-weight:900;letter-spacing:.14em}
+.discrepancy-title strong{display:block;margin-top:5px;color:var(--cx-ink);font-size:1.12rem}
+.discrepancy-title p{max-width:760px;margin:6px 0 0;color:var(--cx-muted);line-height:1.55}
+.case-readiness{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:0 0 18px;padding:14px 16px;border:1px solid #eadfbd;border-radius:14px;background:var(--cx-warn)}
+.case-readiness strong,.case-readiness span{display:block}.case-readiness strong{color:#6f5718}.case-readiness span{color:#756b50;font-size:12px;text-align:right}
+.case-readiness.is-ready{border-color:#cde6c8;background:#f1faef}.case-readiness.is-ready strong{color:var(--cx-green)}.case-readiness.is-ready span{color:#56705c}
+.case-preparation-form,.draft-create-form,.legal-review-content,.final-approval-content,.delivery-tracking-content{display:grid;gap:14px}
+.case-preparation-form label,.draft-create-form label,.legal-review-content label,.final-approval-content label,.delivery-tracking-content label{display:grid;gap:7px;color:#34463b;font-size:12px;font-weight:800}
+.case-preparation-form input,.case-preparation-form select,.case-preparation-form textarea,.draft-create-form input,.draft-create-form select,.draft-create-form textarea,.legal-review-content input,.legal-review-content select,.legal-review-content textarea,.final-approval-content input,.final-approval-content select,.final-approval-content textarea,.delivery-tracking-content input,.delivery-tracking-content select,.delivery-tracking-content textarea{width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid #d7e6d4;border-radius:12px;background:#fbfdfb;color:var(--cx-ink);font:inherit;outline:none;transition:.16s ease}
+.case-preparation-form input:focus,.case-preparation-form select:focus,.case-preparation-form textarea:focus,.draft-create-form input:focus,.draft-create-form select:focus,.draft-create-form textarea:focus,.legal-review-content input:focus,.legal-review-content select:focus,.legal-review-content textarea:focus,.final-approval-content input:focus,.final-approval-content select:focus,.final-approval-content textarea:focus,.delivery-tracking-content input:focus,.delivery-tracking-content select:focus,.delivery-tracking-content textarea:focus{border-color:#7cc76f;box-shadow:0 0 0 4px rgba(84,185,72,.1);background:#fff}
+textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
+.draft-status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.draft-status-grid>div{padding:13px 14px;border:1px solid var(--cx-line);border-radius:13px;background:var(--cx-soft)}
+.draft-status-grid small{display:block;color:var(--cx-muted);font-size:9px;font-weight:900;letter-spacing:.1em}
+.draft-status-grid strong{display:block;margin-top:5px;color:var(--cx-green);overflow-wrap:anywhere}
+.review-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:2px}
+.review-actions span{font-size:12px;font-weight:700;color:var(--cx-green)}
+.reports-btn.primary,#creditos-create-draft,#creditos-save-legal-review,#creditos-save-final-approval,#creditos-save-delivery{min-height:42px;border-radius:11px;box-shadow:0 7px 18px rgba(23,107,58,.12)}
+.reports-btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.account-action-note{padding:11px 13px;border-radius:11px;background:#f6f9f5;line-height:1.5}
+.delivery-date-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.account-entry-state{text-align:center;padding:42px 28px;background:linear-gradient(145deg,#fff,#f3faef)}
+.account-entry-state .discrepancy-title p{margin-left:auto;margin-right:auto}
+.account-entry-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:22px 0}
+.account-entry-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-width:820px;margin:24px auto 0}
+.account-entry-flow span{display:grid;gap:7px;padding:16px;border:1px solid var(--cx-line);border-radius:14px;background:#fff;color:var(--cx-bright);font-weight:900}
+.account-entry-flow strong{color:var(--cx-ink);font-size:12px}
+@media(max-width:760px){.dispute-candidate-box,.case-preparation-panel,.drafting-workspace,.legal-review-workspace,.final-approval-workspace,.delivery-tracking-workspace{padding:18px}.case-readiness{align-items:flex-start;flex-direction:column}.case-readiness span{text-align:left}.draft-status-grid,.delivery-date-grid{grid-template-columns:1fr}.account-entry-flow{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.account-entry-flow{grid-template-columns:1fr}.account-entry-state{padding:28px 16px}.account-entry-actions{align-items:stretch;flex-direction:column}.account-entry-actions .reports-btn{width:100%;box-sizing:border-box;text-align:center}}
