@@ -69,7 +69,7 @@ class CreditOS_Report_Import {
     }
 
     public function maybe_install_schema(){
-        $this->ensure_phase1b_tradeline_columns();$this->ensure_tradeline_evidence_columns();$this->ensure_dispute_candidate_columns();
+        $this->ensure_phase1b_tradeline_columns();$this->ensure_collection_review_columns();$this->ensure_tradeline_evidence_columns();$this->ensure_dispute_candidate_columns();
         $this->ensure_tradeline_corrections_table();
         $this->ensure_report_versions_table();
         if(get_option('creditos_reports_schema_version')===CREDITOS_CORE_VERSION)return;
@@ -132,6 +132,23 @@ class CreditOS_Report_Import {
         }
     }
 
+    private function ensure_collection_review_columns(){
+        $table=$this->wpdb->prefix.'creditos_collections';
+        $exists=$this->wpdb->get_var($this->wpdb->prepare("SHOW TABLES LIKE %s",$table)); if($exists!==$table)return;
+        $required=array(
+            'review_status'=>"VARCHAR(30) NOT NULL DEFAULT 'needs_review' AFTER status",
+            'reviewer_notes'=>"TEXT NULL AFTER review_status",
+            'discrepancy_type'=>"VARCHAR(50) NULL AFTER reviewer_notes",
+            'discrepancy_field'=>"VARCHAR(50) NULL AFTER discrepancy_type",
+            'discrepancy_details'=>"TEXT NULL AFTER discrepancy_field",
+            'evidence_status'=>"VARCHAR(30) NOT NULL DEFAULT 'not_requested' AFTER discrepancy_details",
+            'evidence_notes'=>"TEXT NULL AFTER evidence_status",
+            'reviewed_by'=>"BIGINT UNSIGNED NULL AFTER evidence_notes",
+            'reviewed_at'=>"DATETIME NULL AFTER reviewed_by"
+        );
+        foreach($required as $column=>$definition){$has=$this->wpdb->get_var($this->wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",$column));if(!$has)$this->wpdb->query("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");}
+    }
+
     private function ensure_tradeline_evidence_columns(){ $table=$this->wpdb->prefix.'creditos_tradeline_evidence'; $exists=$this->wpdb->get_var($this->wpdb->prepare("SHOW TABLES LIKE %s",$table)); if($exists!==$table)return; $required=array('evidence_type'=>"VARCHAR(40) NOT NULL DEFAULT 'other'",'review_status'=>"VARCHAR(30) NOT NULL DEFAULT 'pending'",'reviewed_by'=>"BIGINT UNSIGNED NULL",'reviewed_at'=>"DATETIME NULL"); foreach($required as $column=>$definition){$has=$this->wpdb->get_var($this->wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",$column));if(!$has)$this->wpdb->query("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");}}
 
     private function ensure_dispute_candidate_columns(){ $table=$this->wpdb->prefix.'creditos_dispute_items'; $exists=$this->wpdb->get_var($this->wpdb->prepare("SHOW TABLES LIKE %s",$table)); if($exists!==$table)return; $required=array('report_id'=>"BIGINT UNSIGNED NULL",'client_id'=>"BIGINT UNSIGNED NULL",'tradeline_id'=>"BIGINT UNSIGNED NULL",'candidate_status'=>"VARCHAR(30) NOT NULL DEFAULT 'candidate'"); foreach($required as $column=>$definition){$has=$this->wpdb->get_var($this->wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",$column));if(!$has)$this->wpdb->query("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");}}
@@ -145,6 +162,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/normalized',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'save_normalized'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/reprocess',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'reprocess_report'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline'),'permission_callback'=>array($this,'client_access')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/collections/(?P<collection_id>\\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_collection'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/payment-history',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_payment_history'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/bureau-comparison',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_bureau_comparison'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_evidence'),'permission_callback'=>array($this,'client_access')));
@@ -348,6 +366,20 @@ class CreditOS_Report_Import {
         return rest_ensure_response(array('success'=>true,'review_status'=>$status,'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')));
     }
 
+    public function review_collection(WP_REST_Request $request){
+        $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
+        $rid=absint($request['id']); $cid=absint($request['collection_id']); $data=$request->get_json_params(); $table=$this->wpdb->prefix.'creditos_collections';
+        $row=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$table} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$cid,$rid,$client->id),ARRAY_A);
+        if(!$row)return new WP_Error('creditos_collection_not_found','Collection record not found.',array('status'=>404));
+        $status=sanitize_key($data['review_status']??'needs_review'); $allowed_status=array('needs_review','verified','potential_inaccuracy','missing_evidence','ignore'); if(!in_array($status,$allowed_status,true))$status='needs_review';
+        $dtype=sanitize_key($data['discrepancy_type']??''); $dfield=sanitize_key($data['discrepancy_field']??'');
+        $evidence_status=sanitize_key($data['evidence_status']??'not_requested'); if(!in_array($evidence_status,array('not_requested','needed','requested','received','reviewed'),true))$evidence_status='not_requested';
+        $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>sanitize_textarea_field($data['reviewer_notes']??''),'discrepancy_type'=>$dtype?:null,'discrepancy_field'=>$dfield?:null,'discrepancy_details'=>sanitize_textarea_field($data['discrepancy_details']??''),'evidence_status'=>$evidence_status,'evidence_notes'=>sanitize_textarea_field($data['evidence_notes']??''),'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')),array('id'=>$cid,'report_id'=>$rid,'client_id'=>$client->id));
+        if(false===$ok)return new WP_Error('creditos_collection_review_save_failed','The collection review could not be saved.',array('status'=>500));
+        $this->repository->audit(get_current_user_id(),$client->id,'collection_review_saved','collection',$cid,array('report_id'=>$rid,'review_status'=>$status,'discrepancy_type'=>$dtype,'discrepancy_field'=>$dfield,'evidence_status'=>$evidence_status));
+        return rest_ensure_response(array('success'=>true,'review_status'=>$status,'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')));
+    }
+
     public function list_tradeline_corrections(WP_REST_Request $request){
         $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','CreditOS client profile could not be loaded.',array('status'=>404));
         $rid=absint($request['id']); $tid=absint($request['tradeline_id']); $t=$this->wpdb->prefix.'creditos_tradelines'; $ct=$this->wpdb->prefix.'creditos_tradeline_corrections';
@@ -418,5 +450,5 @@ class CreditOS_Report_Import {
         $this->repository->audit(get_current_user_id(),$cid,'credit_report_version_created','credit_report',$rid,$version_result);
         $this->wpdb->update($p.'creditos_credit_reports',array('status'=>'ready_for_review','parser_status'=>'normalized','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));return true;}
 
-    private function report_payload($rid,$cid){$p=$this->wpdb->prefix;$report=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,provider,report_date,imported_at,status,parser_status,source_format,source_filename,error_message FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid),ARRAY_A);if(!$report)return null;$report['tradelines']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,account_number_masked,account_type,opened_date,status,status_updated,balance,credit_limit,past_due,payment_status,balance_updated,date_reported,remarks,responsibility,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_tradelines WHERE report_id=%d AND client_id=%d ORDER BY creditor_name",$rid,$cid),ARRAY_A);$report['collections']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,collector_name,original_creditor,balance,assigned_date,status,created_at FROM {$p}creditos_collections WHERE report_id=%d AND client_id=%d ORDER BY collector_name",$rid,$cid),ARRAY_A);$report['inquiries']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,inquiry_type,inquiry_date,created_at FROM {$p}creditos_inquiries WHERE report_id=%d AND client_id=%d ORDER BY inquiry_date DESC",$rid,$cid),ARRAY_A);$report['personal_information']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,info_type,info_value,status,created_at FROM {$p}creditos_personal_information WHERE report_id=%d AND client_id=%d ORDER BY info_type,info_value",$rid,$cid),ARRAY_A);return$report;}
+    private function report_payload($rid,$cid){$p=$this->wpdb->prefix;$report=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,provider,report_date,imported_at,status,parser_status,source_format,source_filename,error_message FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid),ARRAY_A);if(!$report)return null;$report['tradelines']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,account_number_masked,account_type,opened_date,status,status_updated,balance,credit_limit,past_due,payment_status,balance_updated,date_reported,remarks,responsibility,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_tradelines WHERE report_id=%d AND client_id=%d ORDER BY creditor_name",$rid,$cid),ARRAY_A);$report['collections']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,collector_name,original_creditor,balance,assigned_date,status,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_collections WHERE report_id=%d AND client_id=%d ORDER BY collector_name",$rid,$cid),ARRAY_A);$report['inquiries']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,inquiry_type,inquiry_date,created_at FROM {$p}creditos_inquiries WHERE report_id=%d AND client_id=%d ORDER BY inquiry_date DESC",$rid,$cid),ARRAY_A);$report['personal_information']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,info_type,info_value,status,created_at FROM {$p}creditos_personal_information WHERE report_id=%d AND client_id=%d ORDER BY info_type,info_value",$rid,$cid),ARRAY_A);return$report;}
 }
