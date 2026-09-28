@@ -59,4 +59,7 @@ printf 'Verifying report-storage filesystem policy...\n'
 printf 'Auditing web-server report-source isolation...\n'
 "${SSH[@]}" "$REMOTE" "if command -v nginx >/dev/null 2>&1; then echo 'nginx detected; direct static upload isolation requires an explicit Hestia/nginx deny rule or non-public report storage'; fi; if command -v apache2 >/dev/null 2>&1 || command -v httpd >/dev/null 2>&1; then echo 'Apache detected; verify that upstream nginx cannot bypass any Apache-only protection'; fi"
 
+printf 'Checking for an explicit CreditOS report isolation marker...\n'
+"${SSH[@]}" "$REMOTE" "MARKER='$HESTIA_PATH/../.creditos-report-isolation-verified'; if test -f \"\$MARKER\"; then echo 'CreditOS report isolation marker present'; else echo 'WARNING: CreditOS direct static report isolation has not been verified on this host'; fi"
+
 printf 'CreditOS deployment completed successfully.\n'
