@@ -131,3 +131,11 @@ Application-level source controls are implemented: client ownership, exact attac
 2. an explicit Hestia/nginx/Apache rule that denies direct static access to the report-source location.
 
 Do not mark Phase 1 complete until direct static source-file isolation and the authenticated regression gate both pass.
+
+## Phase 1F — Private source storage implemented
+
+Production deployment now provisions a dedicated `creditos-private/reports` directory outside `public_html`. New report uploads are moved into this non-public storage before parsing, and processing requires the private-storage marker, a path inside the private report root, a regular non-symlink file, 0600 permissions, and a matching SHA-256 checksum. Legacy report sources are migrated from WordPress uploads through a controlled fail-closed migration path before reprocessing. Attachment path persistence is verified after migration.
+
+### Remaining Phase 1 completion gate
+
+Run the authenticated end-to-end regression/readiness test: import a controlled report; confirm normalization and counts; inspect a tradeline; save review/discrepancy/evidence state; save a correction without modifying normalized source data; verify review history and report version comparison; close/reopen and confirm persistence; verify Saved Reviews opens the exact tradeline; confirm no raw source text or unmasked account data is exposed; and verify desktop/mobile usability. Phase 1 is complete only after this controlled authenticated gate passes.
