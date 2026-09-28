@@ -28,6 +28,17 @@ class CreditOS_Report_Import {
         return $dest;
     }
 
+    private function migrate_legacy_report_to_private_storage($attachment_id){
+        $attachment_id=absint($attachment_id);
+        if(!$attachment_id||'1'!==get_post_meta($attachment_id,'_creditos_private',true))return false;
+        if('1'===get_post_meta($attachment_id,'_creditos_private_storage',true))return get_attached_file($attachment_id);
+        $path=get_attached_file($attachment_id);
+        if(!$path||!is_file($path)||is_link($path))return false;
+        $uploads=wp_get_upload_dir(); $basedir=realpath((string)($uploads['basedir']??'')); $real=realpath($path);
+        if(!$basedir||!$real||0!==strpos($real,rtrim($basedir,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR))return false;
+        return $this->move_report_to_private_storage($attachment_id);
+    }
+
     private function harden_private_report_file($attachment_id){
         $path=get_attached_file(absint($attachment_id));
         if(!$path||!file_exists($path))return false;
@@ -166,6 +177,16 @@ class CreditOS_Report_Import {
                 $this->mark_failed($rid,$cid,'The uploaded report source failed its filesystem security check and cannot be processed.');
                 $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>true,'secure_permissions'=>false));
                 return false;
+            }
+            if('1'!==get_post_meta($attachment_id,'_creditos_private_storage',true)){
+                $migrated=$this->migrate_legacy_report_to_private_storage($attachment_id);
+                if(!$migrated){
+                    $this->mark_failed($rid,$cid,'The legacy report source could not be migrated to private storage.');
+                    $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('legacy_private_migration'=>false));
+                    return false;
+                }
+                $path=$migrated;
+                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_migrated_private','credit_report',$rid,array('legacy_private_migration'=>true));
             }
             $realpath=realpath($path);
             $private_root=realpath(dirname(rtrim(ABSPATH,DIRECTORY_SEPARATOR)).DIRECTORY_SEPARATOR.'creditos-private'.DIRECTORY_SEPARATOR.'reports');
