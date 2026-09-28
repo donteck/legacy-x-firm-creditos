@@ -189,3 +189,11 @@ textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
 .account-entry-flow strong{color:var(--cx-ink);font-size:12px}
 @media(max-width:760px){.dispute-candidate-box,.case-preparation-panel,.drafting-workspace,.legal-review-workspace,.final-approval-workspace,.delivery-tracking-workspace{padding:18px}.case-readiness{align-items:flex-start;flex-direction:column}.case-readiness span{text-align:left}.draft-status-grid,.delivery-date-grid{grid-template-columns:1fr}.account-entry-flow{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.account-entry-flow{grid-template-columns:1fr}.account-entry-state{padding:28px 16px}.account-entry-actions{align-items:stretch;flex-direction:column}.account-entry-actions .reports-btn{width:100%;box-sizing:border-box;text-align:center}}
+
+.account-case-progress{display:grid;grid-template-columns:repeat(7,minmax(82px,1fr));gap:0;margin:0 0 18px;padding:15px 16px;border:1px solid var(--cx-line,#dcebd9);border-radius:18px;background:#fff;box-shadow:0 8px 26px rgba(16,32,24,.045);overflow-x:auto}
+.case-progress-step{position:relative;display:flex;align-items:center;gap:8px;min-width:82px;color:#87938b;font-weight:800}
+.case-progress-step:not(:last-child):after{content:"";position:absolute;left:38px;right:8px;top:15px;height:2px;background:#e1ebe0;z-index:0}
+.case-progress-step span{position:relative;z-index:1;display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border:2px solid #dbe7d9;border-radius:50%;background:#fff;font-size:11px}
+.case-progress-step small{position:relative;z-index:1;background:#fff;padding-right:7px;font-size:10px;letter-spacing:.03em}
+.case-progress-step.is-current{color:var(--cx-green,#176b3a)}.case-progress-step.is-current span{border-color:var(--cx-bright,#54b948);background:#eff9ed;box-shadow:0 0 0 4px rgba(84,185,72,.08)}
+@media(max-width:760px){.account-case-progress{grid-template-columns:repeat(7,105px);padding:13px}.case-progress-step small{font-size:9px}}
