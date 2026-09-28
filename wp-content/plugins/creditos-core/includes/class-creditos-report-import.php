@@ -167,11 +167,12 @@ class CreditOS_Report_Import {
                 $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>true,'secure_permissions'=>false));
                 return false;
             }
-            $uploads=wp_get_upload_dir(); $basedir=realpath((string)($uploads['basedir']??''));
             $realpath=realpath($path);
-            if(!$basedir||!$realpath||0!==strpos($realpath,rtrim($basedir,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)){
+            $private_root=realpath(dirname(rtrim(ABSPATH,DIRECTORY_SEPARATOR)).DIRECTORY_SEPARATOR.'creditos-private'.DIRECTORY_SEPARATOR.'reports');
+            $private_marked='1'===get_post_meta($attachment_id,'_creditos_private_storage',true);
+            if(!$private_marked||!$private_root||!$realpath||0!==strpos($realpath,rtrim($private_root,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)){
                 $this->mark_failed($rid,$cid,'The uploaded report source failed its storage-path security check and cannot be processed.');
-                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('storage_path_valid'=>false));
+                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_storage_verified'=>false));
                 return false;
             }
             $source=$this->wpdb->get_row($this->wpdb->prepare("SELECT checksum FROM {$this->wpdb->prefix}creditos_credit_report_sources WHERE report_id=%d AND raw_reference=%s ORDER BY id DESC LIMIT 1",$rid,(string)$attachment_id),ARRAY_A);
