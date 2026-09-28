@@ -226,3 +226,16 @@ Implementation commits: `9c612f8`, `2703996`, `0a74cb6`, `e43f8df`, `9214ef2`, `
 
 ### Remaining Phase 1C completion gate
 The code path is implemented and deployment validation is passing for completed runs. Phase 1C is not marked complete until an authenticated end-to-end UI test confirms: save a review, reopen it from Saved Reviews, verify all review/discrepancy/evidence values persist, verify a second tradeline remains independent, and confirm normalized account counts/data are unchanged by review-only actions.
+
+
+## Account Inspector intelligence extensions — 2026-09-28
+
+The approved Account Intelligence Workspace layout remains the protected baseline. Incremental additions now include:
+
+- Payment History tab backed by client/report/tradeline-scoped monthly records. Missing history is never inferred.
+- Effective Reviewed Record inside Corrections, preserving normalized source values while applying the latest verified correction as the working value.
+- Account Audit History inside History, using saved review states for the exact tradeline.
+- 3-Bureau Compare tab for Experian, Equifax, and TransUnion. Matching is conservative: exact normalized creditor name plus exact masked account reference within the authenticated client scope. Missing bureau data is shown as unavailable rather than inferred.
+- Existing Account Health, Accuracy Review, Evidence, Corrections, and Next Action workflows remain in place.
+
+Evidence file attachments remain deferred until a dedicated private evidence-storage workflow is implemented. Phase 1 remains open pending the authenticated final readiness gate.
