@@ -40,6 +40,14 @@ class CreditOS_Legal_Review {
              WHERE d.id=%d",absint($id)
         ),ARRAY_A);
     }
+    private function safeguards_current($draft){
+        $p=$this->wpdb->prefix;
+        $case=$this->wpdb->get_row($this->wpdb->prepare("SELECT cp.*,COALESCE(t.review_status,c.review_status) review_status,COALESCE(t.discrepancy_type,c.discrepancy_type) discrepancy_type FROM {$p}creditos_case_preparations cp LEFT JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id AND t.report_id=cp.report_id AND t.client_id=cp.client_id LEFT JOIN {$p}creditos_collections c ON c.id=cp.collection_id AND c.report_id=cp.report_id AND c.client_id=cp.client_id WHERE cp.id=%d AND (t.id IS NOT NULL OR c.id IS NOT NULL) LIMIT 1",$draft['case_id']),ARRAY_A);
+        if(!$case||'potential_inaccuracy'!==$case['review_status']||empty($case['discrepancy_type'])||'none'===$case['discrepancy_type'])return false;
+        if(!empty($case['collection_id']))$accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_collection_evidence WHERE report_id=%d AND collection_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['collection_id'],$case['client_id']));
+        else $accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_tradeline_evidence WHERE report_id=%d AND tradeline_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['tradeline_id'],$case['client_id']));
+        return $accepted>0;
+    }
     private function own_client_id(){ return (int)$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$this->wpdb->prefix}creditos_clients WHERE wp_user_id=%d LIMIT 1",get_current_user_id())); }
     public function can_access($r){
         if(!is_user_logged_in()) return false; $d=$this->draft($r['id']); if(!$d) return false;
@@ -49,11 +57,13 @@ class CreditOS_Legal_Review {
     public function can_review($r){ return is_user_logged_in() && (current_user_can('creditos_manage_disputes')||current_user_can('manage_options')) && (bool)$this->draft($r['id']); }
     public function get_review($r){
         $d=$this->draft($r['id']); if(!$d) return new WP_Error('creditos_draft_missing','Draft not found.',array('status'=>404));
+        if(!$this->safeguards_current($d))return new WP_Error('creditos_case_revalidation_required','Underlying case safeguards changed. Restore the required review, discrepancy, and accepted evidence before Legal Review.',array('status'=>409));
         $review=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->wpdb->prefix}creditos_legal_reviews WHERE draft_id=%d LIMIT 1",$d['id']),ARRAY_A);
         return rest_ensure_response(array('draft'=>$d,'review'=>$review,'can_review'=>current_user_can('creditos_manage_disputes')||current_user_can('manage_options')));
     }
     public function save_review($r){
         $d=$this->draft($r['id']); if(!$d) return new WP_Error('creditos_draft_missing','Draft not found.',array('status'=>404));
+        if(!$this->safeguards_current($d))return new WP_Error('creditos_case_revalidation_required','Underlying case safeguards changed. Restore the required review, discrepancy, and accepted evidence before saving Legal Review.',array('status'=>409));
         $status=sanitize_key((string)$r->get_param('review_status'));
         if(!in_array($status,array('in_review','changes_required','validated'),true)) return new WP_Error('creditos_review_status','Choose a valid legal review status.',array('status'=>400));
         $refs=sanitize_textarea_field((string)$r->get_param('legal_references'));
