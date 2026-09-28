@@ -120,3 +120,14 @@ After this gate passes, Phase 1 can be closed and Phase 2 — 3-Bureau Intellige
 - Verify direct source-file isolation at the web-server/storage layer.
 - Run the authenticated Phase 1 final readiness regression gate.
 - Do not declare Phase 1 complete until both security/storage verification and the authenticated readiness checks pass.
+
+## Phase 1F — Source-file isolation gate
+
+Application-level source controls are implemented: client ownership, exact attachment binding, private marker, regular-file/no-symlink validation, upload-storage boundary validation, 0600 permission verification, and SHA-256 integrity verification before processing.
+
+**Phase 1 remains open.** These controls do not prove that a known direct `/wp-content/uploads/...` URL is unreachable through the production web server. Final readiness requires one of the following to be implemented and tested in production:
+
+1. sensitive credit-report source files stored outside the public web root, or
+2. an explicit Hestia/nginx/Apache rule that denies direct static access to the report-source location.
+
+Do not mark Phase 1 complete until direct static source-file isolation and the authenticated regression gate both pass.
