@@ -42,11 +42,20 @@ class CreditOS_Delivery_Tracking {
     }
     private function draft($id){ return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->wpdb->prefix}creditos_dispute_drafts WHERE id=%d",absint($id)),ARRAY_A); }
     private function approval($id){ return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->wpdb->prefix}creditos_final_approvals WHERE draft_id=%d LIMIT 1",absint($id)),ARRAY_A); }
+    private function safeguards_current($draft){
+        $p=$this->wpdb->prefix;
+        $case=$this->wpdb->get_row($this->wpdb->prepare("SELECT cp.*,COALESCE(t.review_status,c.review_status) review_status,COALESCE(t.discrepancy_type,c.discrepancy_type) discrepancy_type FROM {$p}creditos_case_preparations cp LEFT JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id AND t.report_id=cp.report_id AND t.client_id=cp.client_id LEFT JOIN {$p}creditos_collections c ON c.id=cp.collection_id AND c.report_id=cp.report_id AND c.client_id=cp.client_id WHERE cp.id=%d AND (t.id IS NOT NULL OR c.id IS NOT NULL) LIMIT 1",$draft['case_id']),ARRAY_A);
+        if(!$case||'potential_inaccuracy'!==$case['review_status']||empty($case['discrepancy_type'])||'none'===$case['discrepancy_type'])return false;
+        if(!empty($case['collection_id']))$accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_collection_evidence WHERE report_id=%d AND collection_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['collection_id'],$case['client_id']));
+        else $accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_tradeline_evidence WHERE report_id=%d AND tradeline_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['tradeline_id'],$case['client_id']));
+        return $accepted>0;
+    }
     private function own_client_id(){ return (int)$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$this->wpdb->prefix}creditos_clients WHERE wp_user_id=%d LIMIT 1",get_current_user_id())); }
     public function can_access($r){ if(!is_user_logged_in())return false;$d=$this->draft($r['id']);if(!$d)return false;if(current_user_can('creditos_manage_disputes')||current_user_can('manage_options'))return true;$cid=$this->own_client_id();return $cid>0&&$cid===(int)$d['client_id']; }
     public function can_manage($r){ return is_user_logged_in()&&(current_user_can('creditos_manage_disputes')||current_user_can('manage_options'))&&(bool)$this->draft($r['id']); }
     public function get_delivery($r){
         $d=$this->draft($r['id']); if(!$d)return new WP_Error('creditos_draft_missing','Draft not found.',array('status'=>404));
+        if(!$this->safeguards_current($d))return new WP_Error('creditos_case_revalidation_required','Underlying case safeguards changed. Restore them before Delivery & Tracking.',array('status'=>409));
         $a=$this->approval($d['id']);
         $delivery=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->wpdb->prefix}creditos_deliveries WHERE draft_id=%d LIMIT 1",$d['id']),ARRAY_A);
         return rest_ensure_response(array('draft'=>$d,'approval'=>$a,'delivery'=>$delivery,'eligible'=>($a&&'approved'===$a['approval_status']),'provider_connected'=>false,'can_manage'=>current_user_can('creditos_manage_disputes')||current_user_can('manage_options')));
