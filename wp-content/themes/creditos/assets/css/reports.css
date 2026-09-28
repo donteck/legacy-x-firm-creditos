@@ -215,3 +215,22 @@ textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
 .delivery-timeline-step.is-complete i,.delivery-timeline-step.is-current i{border-color:#54b948;background:#54b948}.delivery-timeline-step.is-complete:not(:last-child):after{background:#9fd096}.delivery-timeline-step.is-complete strong,.delivery-timeline-step.is-current strong{color:#176b3a}.delivery-timeline-step.is-current i{box-shadow:0 0 0 4px rgba(84,185,72,.12)}
 .delivery-deadline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid #dcebd9}.delivery-deadline strong{color:#102018}
 @media(max-width:650px){.delivery-timeline-head{align-items:flex-start;flex-direction:column}.delivery-timeline-steps{grid-template-columns:1fr;gap:12px}.delivery-timeline-step:not(:last-child):after{left:7px;right:auto;top:14px;bottom:-14px;width:2px;height:auto}}
+
+/* Account Inspector entry dashboard v3 */
+.account-entry-dashboard{display:grid;gap:18px}
+.account-entry-hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(210px,.5fr);gap:30px;align-items:center;padding:38px 40px;border:1px solid #d6e9d3;border-radius:24px;background:radial-gradient(circle at 90% 10%,rgba(84,185,72,.16),transparent 34%),linear-gradient(135deg,#fff 0%,#f5fbf3 100%);box-shadow:0 22px 60px rgba(16,32,24,.08)}
+.entry-eyebrow{display:block;margin-bottom:10px;color:#176b3a;font-size:10px;font-weight:900;letter-spacing:.16em}
+.account-entry-hero h2{max-width:650px;margin:0;color:#102018;font-size:clamp(28px,3vw,44px);line-height:1.02;letter-spacing:-.045em}
+.account-entry-hero p{max-width:680px;margin:16px 0 0;color:#607068;font-size:14px;line-height:1.7}
+.account-entry-hero .account-entry-actions{justify-content:flex-start;margin:24px 0 0}
+.entry-hero-mark{justify-self:end;display:grid;grid-template-columns:auto auto;gap:13px;align-items:center;padding:20px;border:1px solid rgba(84,185,72,.24);border-radius:20px;background:rgba(255,255,255,.72);backdrop-filter:blur(8px)}
+.entry-hero-mark>span{display:grid;place-items:center;width:58px;height:58px;border-radius:17px;background:#54b948;color:#fff;font-size:28px;font-weight:900;box-shadow:0 12px 28px rgba(84,185,72,.25)}
+.entry-hero-mark small{color:#176b3a;font-size:11px;font-weight:900;line-height:1.25;text-transform:uppercase;letter-spacing:.08em}
+.entry-capability-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.entry-capability-grid article{display:flex;gap:14px;min-height:112px;padding:19px;border:1px solid #dcebd9;border-radius:17px;background:#fff;box-shadow:0 8px 24px rgba(16,32,24,.04)}
+.entry-capability-grid article>span{color:#54b948;font-size:11px;font-weight:900}.entry-capability-grid strong{display:block;color:#102018;font-size:15px}.entry-capability-grid p{margin:7px 0 0;color:#65736a;font-size:11px;line-height:1.55}
+.entry-workflow{display:grid;grid-template-columns:190px 1fr;gap:24px;align-items:center;padding:20px 22px;border:1px solid #dcebd9;border-radius:17px;background:#fbfdfb}
+.entry-workflow-title small{display:block;color:#176b3a;font-size:9px;font-weight:900;letter-spacing:.13em}.entry-workflow-title strong{display:block;margin-top:5px;color:#102018}
+.entry-workflow-rail{display:flex;align-items:center}.entry-workflow-rail span{display:flex;align-items:center;gap:6px;white-space:nowrap;color:#536159;font-size:10px;font-weight:800}.entry-workflow-rail b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#eff9ed;color:#176b3a;font-size:9px}.entry-workflow-rail i{height:1px;min-width:12px;flex:1;background:#cfe2cc;margin:0 7px}
+@media(max-width:900px){.account-entry-hero{grid-template-columns:1fr}.entry-hero-mark{justify-self:start}.entry-capability-grid{grid-template-columns:1fr 1fr}.entry-workflow{grid-template-columns:1fr}.entry-workflow-rail{overflow-x:auto;padding-bottom:5px}}
+@media(max-width:560px){.account-entry-hero{padding:26px 20px}.entry-capability-grid{grid-template-columns:1fr}.entry-hero-mark{display:none}.entry-workflow-rail i{min-width:20px}.entry-workflow{padding:17px}}
