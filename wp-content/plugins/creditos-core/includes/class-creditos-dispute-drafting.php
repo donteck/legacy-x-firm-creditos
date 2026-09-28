@@ -48,11 +48,17 @@ class CreditOS_Dispute_Drafting {
     private function case_record($id) {
         $p=$this->wpdb->prefix;
         return $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT cp.*,di.bureau,di.furnisher,di.account_label,di.dispute_reason,t.creditor_name,t.account_number_masked,t.discrepancy_type,t.discrepancy_field,t.discrepancy_details
+            "SELECT cp.*,di.bureau,di.furnisher,di.account_label,di.dispute_reason,
+                    COALESCE(t.creditor_name,c.collector_name) AS creditor_name,
+                    t.account_number_masked,
+                    COALESCE(t.discrepancy_type,c.discrepancy_type) AS discrepancy_type,
+                    COALESCE(t.discrepancy_field,c.discrepancy_field) AS discrepancy_field,
+                    COALESCE(t.discrepancy_details,c.discrepancy_details) AS discrepancy_details
              FROM {$p}creditos_case_preparations cp
              INNER JOIN {$p}creditos_dispute_items di ON di.id=cp.dispute_item_id
-             INNER JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id
-             WHERE cp.id=%d AND cp.case_status='preparing' AND di.candidate_status='candidate'",
+             LEFT JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id
+             LEFT JOIN {$p}creditos_collections c ON c.id=cp.collection_id
+             WHERE cp.id=%d AND cp.case_status='preparing' AND di.candidate_status='candidate' AND (t.id IS NOT NULL OR c.id IS NOT NULL)",
             absint($id)
         ),ARRAY_A);
     }
