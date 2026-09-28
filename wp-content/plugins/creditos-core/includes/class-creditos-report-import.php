@@ -10,6 +10,24 @@ class CreditOS_Report_Import {
         return $url;
     }
 
+    private function move_report_to_private_storage($attachment_id){
+        $attachment_id=absint($attachment_id); $path=get_attached_file($attachment_id);
+        if(!$path||!is_file($path)||is_link($path))return false;
+        $public=realpath(ABSPATH); $root=dirname(rtrim(ABSPATH,DIRECTORY_SEPARATOR)).DIRECTORY_SEPARATOR.'creditos-private'.DIRECTORY_SEPARATOR.'reports';
+        if(!is_dir($root)&&!wp_mkdir_p($root))return false;
+        @chmod(dirname($root),0700); @chmod($root,0700);
+        if(!is_writable($root))return false;
+        $name=$attachment_id.'-'.wp_generate_password(24,false,false).'.'.pathinfo($path,PATHINFO_EXTENSION);
+        $dest=$root.DIRECTORY_SEPARATOR.$name;
+        if(!@rename($path,$dest)){if(!@copy($path,$dest)||!@unlink($path))return false;}
+        @chmod($dest,0600); clearstatcache(true,$dest);
+        $real=realpath($dest); $perms=@fileperms($dest);
+        if(!$real||($public&&0===strpos($real,rtrim($public,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR))||false===$perms||0600!==($perms&0777))return false;
+        update_attached_file($attachment_id,$dest);
+        update_post_meta($attachment_id,'_creditos_private_storage','1');
+        return $dest;
+    }
+
     private function harden_private_report_file($attachment_id){
         $path=get_attached_file(absint($attachment_id));
         if(!$path||!file_exists($path))return false;
@@ -120,7 +138,7 @@ class CreditOS_Report_Import {
         $files=$request->get_file_params(); if(empty($files['report']['tmp_name']))return new WP_Error('creditos_report_required','Choose a credit report file to import.',array('status'=>400)); $file=$files['report']; if(!empty($file['size'])&&(int)$file['size']>25*MB_IN_BYTES)return new WP_Error('creditos_report_too_large','Credit report files must be 25 MB or smaller.',array('status'=>400));
         $allowed=array('pdf'=>'application/pdf','json'=>'application/json','csv'=>'text/csv'); $check=wp_check_filetype_and_ext($file['tmp_name'],$file['name'],$allowed); $ext=strtolower($check['ext']?:pathinfo($file['name'],PATHINFO_EXTENSION)); if(!isset($allowed[$ext]))return new WP_Error('creditos_report_type','Supported report formats are PDF, JSON, and CSV.',array('status'=>400));
         require_once ABSPATH.'wp-admin/includes/file.php';require_once ABSPATH.'wp-admin/includes/media.php';require_once ABSPATH.'wp-admin/includes/image.php';
-        $aid=media_handle_upload('report',0,array('post_title'=>sanitize_file_name($file['name']),'post_author'=>get_current_user_id()),array('test_form'=>false,'mimes'=>$allowed)); if(is_wp_error($aid))return $aid; update_post_meta($aid,'_creditos_private','1'); if(!$this->harden_private_report_file($aid)){wp_delete_attachment($aid,true);return new WP_Error('creditos_report_storage_security','CreditOS could not secure the uploaded report file. The upload was removed; please try again or contact support.',array('status'=>500));}
+        $aid=media_handle_upload('report',0,array('post_title'=>sanitize_file_name($file['name']),'post_author'=>get_current_user_id()),array('test_form'=>false,'mimes'=>$allowed)); if(is_wp_error($aid))return $aid; update_post_meta($aid,'_creditos_private','1'); if(!$this->harden_private_report_file($aid)){wp_delete_attachment($aid,true);return new WP_Error('creditos_report_storage_security','CreditOS could not secure the uploaded report file. The upload was removed; please try again or contact support.',array('status'=>500));} if(!$this->move_report_to_private_storage($aid)){wp_delete_attachment($aid,true);return new WP_Error('creditos_report_private_storage','CreditOS could not isolate the uploaded report in private storage. The upload was removed; please try again or contact support.',array('status'=>500));}
         $bureau=sanitize_key($request->get_param('bureau')?:'multi'); if(!in_array($bureau,array('experian','equifax','transunion','multi'),true))$bureau='multi'; $date=sanitize_text_field($request->get_param('report_date')?:''); $now=current_time('mysql'); $t=$this->wpdb->prefix.'creditos_credit_reports';
         $inserted=$this->wpdb->insert($t,array('client_id'=>absint($c->id),'bureau'=>$bureau,'provider'=>'manual_upload','report_date'=>$date?:null,'imported_at'=>$now,'status'=>'processing','parser_status'=>'processing','source_attachment_id'=>absint($aid),'source_format'=>$ext,'source_filename'=>sanitize_file_name($file['name']),'created_at'=>$now,'updated_at'=>$now));
         $rid=$inserted?absint($this->wpdb->insert_id):0;
