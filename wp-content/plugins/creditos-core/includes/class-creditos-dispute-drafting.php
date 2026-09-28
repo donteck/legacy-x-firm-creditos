@@ -56,11 +56,18 @@ class CreditOS_Dispute_Drafting {
                     COALESCE(t.discrepancy_details,c.discrepancy_details) AS discrepancy_details
              FROM {$p}creditos_case_preparations cp
              INNER JOIN {$p}creditos_dispute_items di ON di.id=cp.dispute_item_id
-             LEFT JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id
-             LEFT JOIN {$p}creditos_collections c ON c.id=cp.collection_id
+             LEFT JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id AND t.report_id=cp.report_id AND t.client_id=cp.client_id
+             LEFT JOIN {$p}creditos_collections c ON c.id=cp.collection_id AND c.report_id=cp.report_id AND c.client_id=cp.client_id
              WHERE cp.id=%d AND cp.case_status='preparing' AND di.candidate_status='candidate' AND (t.id IS NOT NULL OR c.id IS NOT NULL)",
             absint($id)
         ),ARRAY_A);
+    }
+    private function case_is_current($case) {
+        $p=$this->wpdb->prefix;
+        if('potential_inaccuracy'!==($case['review_status']??null) || empty($case['discrepancy_type']) || 'none'===($case['discrepancy_type']??null)) return false;
+        if(!empty($case['collection_id'])) $accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_collection_evidence WHERE report_id=%d AND collection_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['collection_id'],$case['client_id']));
+        else $accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_tradeline_evidence WHERE report_id=%d AND tradeline_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['tradeline_id'],$case['client_id']));
+        return $accepted>0;
     }
     private function own_client_id() {
         return (int)$this->wpdb->get_var($this->wpdb->prepare(
@@ -79,6 +86,7 @@ class CreditOS_Dispute_Drafting {
     public function get_draft($request) {
         $case=$this->case_record($request['id']);
         if(!$case) return new WP_Error('creditos_case_missing','Prepared case not found.',array('status'=>404));
+        if(!$this->case_is_current($case)) return new WP_Error('creditos_case_revalidation_required','Case safeguards changed after preparation. Restore Potential Inaccuracy review, a documented discrepancy, and accepted evidence before continuing the downstream workflow.',array('status'=>409));
         $draft=$this->wpdb->get_row($this->wpdb->prepare(
             "SELECT * FROM {$this->wpdb->prefix}creditos_dispute_drafts WHERE case_id=%d LIMIT 1",$case['id']
         ),ARRAY_A);
@@ -94,6 +102,7 @@ class CreditOS_Dispute_Drafting {
     public function create_draft($request) {
         $case=$this->case_record($request['id']);
         if(!$case) return new WP_Error('creditos_case_missing','Prepared case not found.',array('status'=>404));
+        if(!$this->case_is_current($case)) return new WP_Error('creditos_case_revalidation_required','Case safeguards changed after preparation. Restore Potential Inaccuracy review, a documented discrepancy, and accepted evidence before creating or continuing a draft.',array('status'=>409));
         $table=$this->wpdb->prefix.'creditos_dispute_drafts';
         $existing=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$table} WHERE case_id=%d LIMIT 1",$case['id']),ARRAY_A);
         if($existing) return rest_ensure_response(array('created'=>false,'draft'=>$existing,'notice'=>'Existing draft returned.'));
