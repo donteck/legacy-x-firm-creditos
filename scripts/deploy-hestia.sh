@@ -56,4 +56,7 @@ printf 'Verifying deployed files...\n'
 printf 'Verifying report-storage filesystem policy...\n'
 "${SSH[@]}" "$REMOTE" "test -w '$HESTIA_PATH/wp-content/uploads' || { echo 'CreditOS report storage verification failed'; exit 1; }"
 
+printf 'Auditing web-server report-source isolation...\n'
+"${SSH[@]}" "$REMOTE" "if command -v nginx >/dev/null 2>&1; then echo 'nginx detected; direct static upload isolation requires an explicit Hestia/nginx deny rule or non-public report storage'; fi; if command -v apache2 >/dev/null 2>&1 || command -v httpd >/dev/null 2>&1; then echo 'Apache detected; verify that upstream nginx cannot bypass any Apache-only protection'; fi"
+
 printf 'CreditOS deployment completed successfully.\n'
