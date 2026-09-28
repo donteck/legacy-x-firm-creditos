@@ -141,6 +141,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/reprocess',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'reprocess_report'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/payment-history',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_payment_history'),'permission_callback'=>array($this,'client_access')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/bureau-comparison',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_bureau_comparison'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reviews',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_saved_reviews'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/review-history',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_review_history'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/corrections',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_tradeline_corrections'),'permission_callback'=>array($this,'client_access')));
@@ -280,6 +281,15 @@ class CreditOS_Report_Import {
         $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,user_id,metadata,created_at FROM {$audit} WHERE client_id=%d AND action=%s AND entity_type=%s AND entity_id=%d ORDER BY id DESC LIMIT 100",$client->id,'tradeline_review_saved','tradeline',$tid),ARRAY_A);
         $history=array(); foreach($rows as $row){$meta=json_decode($row['metadata']??'',true); if(!is_array($meta)||absint($meta['report_id']??0)!==$rid)continue; $history[]=array('audit_id'=>absint($row['id']),'reviewed_by'=>absint($row['user_id']),'created_at'=>$row['created_at'],'history_version'=>$meta['history_version']??null,'previous_review'=>$meta['previous_review']??null,'saved_state'=>array('review_status'=>$meta['review_status']??null,'discrepancy_type'=>$meta['discrepancy_type']??null,'discrepancy_field'=>$meta['discrepancy_field']??null,'evidence_status'=>$meta['evidence_status']??null));}
         return rest_ensure_response(array('history'=>$history,'count'=>count($history)));
+    }
+
+    public function tradeline_bureau_comparison($request){
+        $client=$this->current_client(); if(!$client)return new WP_Error('creditos_client_missing','Client profile not found.',array('status'=>403));
+        $rid=absint($request['id']); $tid=absint($request['tradeline_id']); $t=$this->wpdb->prefix.'creditos_tradelines';
+        $row=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,creditor_name,account_number_masked FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id),ARRAY_A);
+        if(!$row)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));
+        $rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,account_number_masked,account_type,opened_date,status,balance,credit_limit,past_due,payment_status,date_reported FROM {$t} WHERE client_id=%d AND LOWER(creditor_name)=LOWER(%s) AND account_number_masked=%s ORDER BY bureau,report_id DESC",$client->id,$row['creditor_name'],$row['account_number_masked']),ARRAY_A);
+        return rest_ensure_response(array('matches'=>$rows,'count'=>count($rows),'match_rule'=>'exact_creditor_and_masked_account'));
     }
 
     public function tradeline_payment_history($request){
