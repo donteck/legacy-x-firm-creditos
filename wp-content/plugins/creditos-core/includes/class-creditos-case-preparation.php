@@ -25,7 +25,8 @@ class CreditOS_Case_Preparation {
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             client_id BIGINT UNSIGNED NOT NULL,
             report_id BIGINT UNSIGNED NOT NULL,
-            tradeline_id BIGINT UNSIGNED NOT NULL,
+            tradeline_id BIGINT UNSIGNED NULL,
+            collection_id BIGINT UNSIGNED NULL,
             dispute_item_id BIGINT UNSIGNED NOT NULL,
             case_status VARCHAR(30) NOT NULL DEFAULT 'preparing',
             issue_summary TEXT NULL,
@@ -39,6 +40,7 @@ class CreditOS_Case_Preparation {
             KEY client_id(client_id),
             KEY report_id(report_id),
             KEY tradeline_id(tradeline_id),
+            KEY collection_id(collection_id),
             KEY case_status(case_status)
         ) $c;" );
     }
@@ -61,10 +63,17 @@ class CreditOS_Case_Preparation {
     private function candidate( $id ) {
         $p = $this->wpdb->prefix;
         return $this->wpdb->get_row( $this->wpdb->prepare(
-            "SELECT di.*,t.creditor_name,t.account_number_masked,t.review_status,t.discrepancy_type,t.discrepancy_field,t.discrepancy_details
+            "SELECT di.*,
+                    COALESCE(t.creditor_name,c.collector_name) AS creditor_name,
+                    t.account_number_masked,
+                    COALESCE(t.review_status,c.review_status) AS review_status,
+                    COALESCE(t.discrepancy_type,c.discrepancy_type) AS discrepancy_type,
+                    COALESCE(t.discrepancy_field,c.discrepancy_field) AS discrepancy_field,
+                    COALESCE(t.discrepancy_details,c.discrepancy_details) AS discrepancy_details
              FROM {$p}creditos_dispute_items di
-             INNER JOIN {$p}creditos_tradelines t ON t.id=di.tradeline_id
-             WHERE di.id=%d AND di.candidate_status='candidate' AND t.report_id=di.report_id AND t.client_id=di.client_id",
+             LEFT JOIN {$p}creditos_tradelines t ON t.id=di.tradeline_id AND t.report_id=di.report_id AND t.client_id=di.client_id
+             LEFT JOIN {$p}creditos_collections c ON c.id=di.collection_id AND c.report_id=di.report_id AND c.client_id=di.client_id
+             WHERE di.id=%d AND di.candidate_status='candidate' AND (t.id IS NOT NULL OR c.id IS NOT NULL)",
             absint( $id )
         ), ARRAY_A );
     }
@@ -83,11 +92,17 @@ class CreditOS_Case_Preparation {
 
     private function readiness( $candidate ) {
         $p = $this->wpdb->prefix;
-        $accepted = (int) $this->wpdb->get_var( $this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$p}creditos_tradeline_evidence
-             WHERE report_id=%d AND tradeline_id=%d AND client_id=%d AND review_status='accepted'",
-            $candidate['report_id'], $candidate['tradeline_id'], $candidate['client_id']
-        ) );
+        if ( ! empty( $candidate['collection_id'] ) ) {
+            $accepted = (int) $this->wpdb->get_var( $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$p}creditos_collection_evidence WHERE report_id=%d AND collection_id=%d AND client_id=%d AND review_status='accepted'",
+                $candidate['report_id'], $candidate['collection_id'], $candidate['client_id']
+            ) );
+        } else {
+            $accepted = (int) $this->wpdb->get_var( $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$p}creditos_tradeline_evidence WHERE report_id=%d AND tradeline_id=%d AND client_id=%d AND review_status='accepted'",
+                $candidate['report_id'], $candidate['tradeline_id'], $candidate['client_id']
+            ) );
+        }
         $checks = array(
             'candidate_exists' => true,
             'potential_inaccuracy' => 'potential_inaccuracy' === $candidate['review_status'],
@@ -134,7 +149,8 @@ class CreditOS_Case_Preparation {
         $ok = $this->wpdb->insert( $table, array(
             'client_id' => (int) $candidate['client_id'],
             'report_id' => (int) $candidate['report_id'],
-            'tradeline_id' => (int) $candidate['tradeline_id'],
+            'tradeline_id' => ! empty( $candidate['tradeline_id'] ) ? (int) $candidate['tradeline_id'] : null,
+            'collection_id' => ! empty( $candidate['collection_id'] ) ? (int) $candidate['collection_id'] : null,
             'dispute_item_id' => (int) $candidate['id'],
             'case_status' => 'preparing',
             'issue_summary' => $issue,
