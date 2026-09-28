@@ -16,6 +16,7 @@ function creditos_ensure_app_pages() {
     $pages = array(
         'dashboard' => array( 'title' => 'CreditOS Dashboard', 'template' => 'page-dashboard.php' ),
         'credit-reports' => array( 'title' => 'CreditOS Credit Reports', 'template' => 'page-credit-reports.php' ),
+        'report-inspector' => array( 'title' => 'CreditOS Report Inspector', 'template' => 'page-report-inspector.php' ),
         'client-login' => array( 'title' => 'CreditOS Client Login', 'template' => 'page-client-login.php' ),
     );
     foreach ( $pages as $slug => $config ) {
@@ -68,7 +69,7 @@ function creditos_theme_assets() {
         wp_localize_script( 'creditos-dashboard', 'CreditOSConfig', creditos_frontend_config() );
     }
 
-    if ( is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) ) {
+    if ( is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) || is_page( 'report-inspector' ) || is_page_template( 'page-report-inspector.php' ) ) {
         $reports_css_version = creditos_asset_version( '/assets/css/reports.css', $version );
         $connections_css_version = creditos_asset_version( '/assets/css/report-connections.css', $version );
         $reports_js_version = creditos_asset_version( '/assets/js/reports.js', $version );
@@ -82,13 +83,13 @@ function creditos_theme_assets() {
         wp_enqueue_style( 'creditos-client-login', get_template_directory_uri() . '/assets/css/login.css', array( 'creditos-style' ), $version );
     }
 
-    if ( is_front_page() || is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) || is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) ) {
+    if ( is_front_page() || is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) || is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) || is_page( 'report-inspector' ) || is_page_template( 'page-report-inspector.php' ) ) {
         wp_enqueue_style( 'creditos-typography', get_template_directory_uri() . '/assets/css/typography.css', array( 'creditos-style' ), $version );
         if ( is_front_page() || is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) ) {
             wp_enqueue_style( 'creditos-layout-polish', get_template_directory_uri() . '/assets/css/layout-polish.css', array( 'creditos-typography' ), $version );
         }
         $green_dependencies = array( 'creditos-typography' );
-        if ( is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) ) $green_dependencies[] = 'creditos-report-connections';
+        if ( is_page( 'credit-reports' ) || is_page_template( 'page-credit-reports.php' ) || is_page( 'report-inspector' ) || is_page_template( 'page-report-inspector.php' ) ) $green_dependencies[] = 'creditos-report-connections';
         if ( is_front_page() || is_page( 'dashboard' ) || is_page_template( 'page-dashboard.php' ) ) $green_dependencies[] = 'creditos-layout-polish';
         wp_enqueue_style( 'creditos-green-brand', get_template_directory_uri() . '/assets/css/creditos-green.css', $green_dependencies, $version );
     }
