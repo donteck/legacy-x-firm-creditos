@@ -23,7 +23,16 @@ class CreditOS_Report_Import {
         @chmod($dest,0600); clearstatcache(true,$dest);
         $real=realpath($dest); $perms=@fileperms($dest);
         if(!$real||($public&&0===strpos($real,rtrim($public,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR))||false===$perms||0600!==($perms&0777))return false;
-        update_attached_file($attachment_id,$dest);
+        if(!update_attached_file($attachment_id,$dest)){
+            @unlink($dest);
+            return false;
+        }
+        $saved=get_attached_file($attachment_id);
+        $saved_real=$saved?realpath($saved):false;
+        if(!$saved_real||$saved_real!==realpath($dest)){
+            @unlink($dest);
+            return false;
+        }
         update_post_meta($attachment_id,'_creditos_private_storage','1');
         return $dest;
     }
