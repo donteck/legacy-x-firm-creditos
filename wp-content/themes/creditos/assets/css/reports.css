@@ -299,3 +299,10 @@ textarea[readonly],input[readonly]{background:#f6f8f6!important;color:#4d5c53}
 .creditos-inspector-page .review-summary{grid-template-columns:repeat(4,minmax(120px,1fr))}
 @media(max-width:1100px){.creditos-inspector-page .reports-main{padding-left:16px;padding-right:16px}.creditos-inspector-page .review-table{min-width:900px}.creditos-inspector-page .review-summary{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.creditos-inspector-page .reports-main{padding-left:10px;padding-right:10px}.creditos-inspector-page .review-table{min-width:0}.creditos-inspector-page .review-table th:last-child,.creditos-inspector-page .review-table td:last-child{position:static;min-width:0;box-shadow:none}.creditos-inspector-page .review-summary{grid-template-columns:1fr 1fr}}
+
+
+/* Account Inspector navigation connection */
+.account-context-nav{display:flex;align-items:center;gap:9px;margin:0 0 14px;padding:10px 13px;border:1px solid #dcebd9;border-radius:12px;background:#f8fcf7;color:#829087;font-size:10px;font-weight:800;overflow-x:auto;white-space:nowrap}
+.account-context-nav a{color:#176b3a;text-decoration:none;font-weight:900}.account-context-nav a:hover{text-decoration:underline}.account-context-nav strong{color:#102018}
+.creditos-account-page .reports-nav a.active{background:#eaf6e7;color:#176b3a}
+@media(max-width:700px){.account-context-nav{margin-bottom:10px}}
