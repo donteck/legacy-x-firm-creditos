@@ -4,36 +4,46 @@ Last updated: September 29, 2026
 
 CreditOS is the Legacy X Firm credit operating system. This document records the current high-level architecture and implementation position.
 
+## Status Color Code
+
+- 🟢 **Green — Built / Complete:** Core architecture is implemented and functioning.
+- 🟡 **Yellow — Active / In Progress:** Built or substantially built, but currently being validated, hardened, or completed.
+- 🔵 **Blue — Upcoming / Planned:** Planned future architecture that has not yet entered active implementation.
+- ⚪ **White — Final / Later Phase:** Reserved for final production, QA, or later-stage completion work.
+
+> **Current main-architecture zone:** 🟡 **#8–#11 — Account/Tradeline Inspector → Discrepancy/Evidence → Case Management.**
+> **Current detailed workflow position:** 🟡 **Stage 3 — CASE.**
+
 ## Main Architecture Status
 
 | # | Architecture | Status |
 |---|---|---|
-| 1 | Core Platform / WordPress Foundation | Built |
-| 2 | Authentication + Client/Staff Roles | Built; permissions are being hardened |
-| 3 | Client Portal / Dashboard | Built |
-| 4 | Client Onboarding / Profile | Built |
-| 5 | Credit Report Intake — PDF/import architecture | Built |
-| 6 | Credit Report Parsing / Normalization | Built |
-| 7 | Report Inspector | Built |
-| 8 | Account / Tradeline Inspector | Active development; core workflow substantially built |
-| 9 | Collections Inspector | Substantially built; parity/hardening remains |
-| 10 | Discrepancy / Evidence Engine | Built; currently being hardened |
-| 11 | Case Management Engine | Built; currently being validated |
-| 12 | Dispute Drafting Engine | Core built |
-| 13 | Legal / U.S. Code Review Layer | Core workflow built; deeper intelligence remains |
-| 14 | Human Approval / Compliance Gate | Core built |
-| 15 | Delivery / Mailing / Tracking | Internal lifecycle built; real provider automation remains |
-| 16 | Bureau/Creditor Response Tracking | Core built |
-| 17 | Outcome / Resolution Engine | Core built |
-| 18 | Multi-round Dispute Lifecycle | Advanced work ahead |
-| 19 | Bureau Direct Connections / Data Sync | Future integration |
-| 20 | AI Credit Analysis + Legal Intelligence | Major advanced phase |
-| 21 | Automation / Rules Engine | Major advanced phase |
-| 22 | Client Notifications / Communications | Advanced integration |
-| 23 | Billing / Subscription / Payments | Future phase |
-| 24 | Staff Operations / CRM / Analytics | Advanced phase |
-| 25 | Security / Audit / Compliance Hardening | In progress; final system-wide pass later |
-| 26 | Production QA / Launch Readiness | Final phase |
+| 1 | Core Platform / WordPress Foundation | 🟢 Built |
+| 2 | Authentication + Client/Staff Roles | 🟡 Built; permissions are being hardened |
+| 3 | Client Portal / Dashboard | 🟢 Built |
+| 4 | Client Onboarding / Profile | 🟢 Built |
+| 5 | Credit Report Intake — PDF/import architecture | 🟢 Built |
+| 6 | Credit Report Parsing / Normalization | 🟢 Built |
+| 7 | Report Inspector | 🟢 Built |
+| 8 | Account / Tradeline Inspector | 🟡 **CURRENT ZONE** — active development; core workflow substantially built |
+| 9 | Collections Inspector | 🟡 Substantially built; parity/hardening remains |
+| 10 | Discrepancy / Evidence Engine | 🟡 Built; currently being hardened |
+| 11 | Case Management Engine | 🟡 **CURRENT — STAGE 3 CASE**; currently being validated |
+| 12 | Dispute Drafting Engine | 🟡 Core built; hardening follows Case |
+| 13 | Legal / U.S. Code Review Layer | 🟡 Core workflow built; deeper intelligence remains |
+| 14 | Human Approval / Compliance Gate | 🟡 Core built; validation remains |
+| 15 | Delivery / Mailing / Tracking | 🟡 Internal lifecycle built; real provider automation remains |
+| 16 | Bureau/Creditor Response Tracking | 🟡 Core built; hardening remains |
+| 17 | Outcome / Resolution Engine | 🟡 Core built; hardening remains |
+| 18 | Multi-round Dispute Lifecycle | 🔵 Advanced work ahead |
+| 19 | Bureau Direct Connections / Data Sync | 🔵 Future integration |
+| 20 | AI Credit Analysis + Legal Intelligence | 🔵 Major advanced phase |
+| 21 | Automation / Rules Engine | 🔵 Major advanced phase |
+| 22 | Client Notifications / Communications | 🔵 Advanced integration |
+| 23 | Billing / Subscription / Payments | 🔵 Future phase |
+| 24 | Staff Operations / CRM / Analytics | 🔵 Advanced phase |
+| 25 | Security / Audit / Compliance Hardening | 🟡 In progress across current development; final pass later |
+| 26 | Production QA / Launch Readiness | ⚪ Final phase |
 
 ## Current Development Position
 
