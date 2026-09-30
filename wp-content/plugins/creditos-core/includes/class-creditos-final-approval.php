@@ -18,10 +18,10 @@ class CreditOS_Final_Approval {
             approved_by BIGINT UNSIGNED NOT NULL,
             approved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY(id),
-            UNIQUE KEY draft_id(draft_id),
-            KEY approval_status(approval_status),
-            KEY approved_by(approved_by)
+            PRIMARY KEY  (id),
+            UNIQUE KEY draft_id (draft_id),
+            KEY approval_status (approval_status),
+            KEY approved_by (approved_by)
         ) $c;");
     }
     public function routes(){

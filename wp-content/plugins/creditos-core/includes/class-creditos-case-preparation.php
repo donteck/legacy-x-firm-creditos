@@ -35,13 +35,13 @@ class CreditOS_Case_Preparation {
             prepared_by BIGINT UNSIGNED NOT NULL,
             prepared_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY(id),
-            UNIQUE KEY dispute_item_id(dispute_item_id),
-            KEY client_id(client_id),
-            KEY report_id(report_id),
-            KEY tradeline_id(tradeline_id),
-            KEY collection_id(collection_id),
-            KEY case_status(case_status)
+            PRIMARY KEY  (id),
+            UNIQUE KEY dispute_item_id (dispute_item_id),
+            KEY client_id (client_id),
+            KEY report_id (report_id),
+            KEY tradeline_id (tradeline_id),
+            KEY collection_id (collection_id),
+            KEY case_status (case_status)
         ) $c;" );
     }
 

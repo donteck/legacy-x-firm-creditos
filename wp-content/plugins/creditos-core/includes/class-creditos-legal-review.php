@@ -19,10 +19,10 @@ class CreditOS_Legal_Review {
             reviewer_id BIGINT UNSIGNED NOT NULL,
             reviewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY(id),
-            UNIQUE KEY draft_id(draft_id),
-            KEY review_status(review_status),
-            KEY reviewer_id(reviewer_id)
+            PRIMARY KEY  (id),
+            UNIQUE KEY draft_id (draft_id),
+            KEY review_status (review_status),
+            KEY reviewer_id (reviewer_id)
         ) $c;");
     }
     public function routes(){

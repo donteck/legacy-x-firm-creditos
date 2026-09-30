@@ -24,12 +24,12 @@ class CreditOS_Response_Outcome {
             created_by BIGINT UNSIGNED NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY(id),
-            UNIQUE KEY draft_id(draft_id),
-            KEY delivery_id(delivery_id),
-            KEY response_status(response_status),
-            KEY outcome(outcome),
-            KEY follow_up_due_at(follow_up_due_at)
+            PRIMARY KEY  (id),
+            UNIQUE KEY draft_id (draft_id),
+            KEY delivery_id (delivery_id),
+            KEY response_status (response_status),
+            KEY outcome (outcome),
+            KEY follow_up_due_at (follow_up_due_at)
         ) $c;");
     }
     public function routes(){

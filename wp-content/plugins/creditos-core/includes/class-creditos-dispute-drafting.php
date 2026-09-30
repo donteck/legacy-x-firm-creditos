@@ -32,11 +32,11 @@ class CreditOS_Dispute_Drafting {
             created_by BIGINT UNSIGNED NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY(id),
-            UNIQUE KEY case_id(case_id),
-            KEY client_id(client_id),
-            KEY dispute_item_id(dispute_item_id),
-            KEY draft_status(draft_status)
+            PRIMARY KEY  (id),
+            UNIQUE KEY case_id (case_id),
+            KEY client_id (client_id),
+            KEY dispute_item_id (dispute_item_id),
+            KEY draft_status (draft_status)
         ) $c;");
     }
     public function register_routes() {

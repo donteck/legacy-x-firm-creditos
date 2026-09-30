@@ -27,11 +27,11 @@ class CreditOS_Delivery_Tracking {
             created_by BIGINT UNSIGNED NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY(id),
-            UNIQUE KEY draft_id(draft_id),
-            KEY approval_id(approval_id),
-            KEY delivery_status(delivery_status),
-            KEY tracking_number(tracking_number)
+            PRIMARY KEY  (id),
+            UNIQUE KEY draft_id (draft_id),
+            KEY approval_id (approval_id),
+            KEY delivery_status (delivery_status),
+            KEY tracking_number (tracking_number)
         ) $c;");
     }
     public function routes(){

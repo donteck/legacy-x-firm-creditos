@@ -108,7 +108,26 @@ if ($creditos_client_id > 0) {
 }
 ?>
 
-<div class="kpis"><div class="kpi"><small>PERSONAL CREDIT HEALTH</small><strong><?php echo esc_html($creditos_score_value); ?></strong><span><?php echo esc_html($creditos_score_label); ?></span></div><div class="kpi"><small>BUSINESS SCORE</small><strong>68</strong><span>Progressing</span></div><div class="kpi"><small>ACTIVE DISPUTES</small><strong>9</strong><span>Workflow preview</span></div><div class="kpi"><small>TASKS COMPLETED</small><strong>24</strong><span>This cycle</span></div><div class="kpi"><small>FUNDING READINESS</small><strong>82%</strong><span>High</span></div></div>
+<div class="kpis"><div class="kpi"><small>PERSONAL CREDIT HEALTH</small><strong><?php echo esc_html($creditos_score_value); ?></strong><span><?php echo esc_html($creditos_score_label); ?></span></div><div class="kpi"><small>BUSINESS SCORE</small><strong>68</strong><span>Progressing</span></div><?php
+$creditos_active_disputes = 0;
+
+if (!empty($creditos_client_id)) {
+    $creditos_active_disputes = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*)
+             FROM {$wpdb->prefix}creditos_disputes
+             WHERE client_id = %d
+               AND status NOT IN ('closed','resolved','cancelled','canceled')",
+            $creditos_client_id
+        )
+    );
+}
+?>
+<div class="kpi">
+    <small>ACTIVE DISPUTES</small>
+    <strong><?php echo esc_html((string) $creditos_active_disputes); ?></strong>
+    <span><?php echo $creditos_active_disputes === 1 ? 'Active case' : 'Active cases'; ?></span>
+</div><div class="kpi"><small>TASKS COMPLETED</small><strong>24</strong><span>This cycle</span></div><div class="kpi"><small>FUNDING READINESS</small><strong>82%</strong><span>High</span></div></div>
 
   <div class="section-label" id="roadmaps"><h3>Your Guided Credit Roadmaps</h3><a href="#">View All Roadmaps →</a></div>
   <div class="roadmap-grid">
