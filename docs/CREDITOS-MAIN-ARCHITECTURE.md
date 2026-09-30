@@ -1,6 +1,6 @@
 # CreditOS Main Architecture
 
-Last updated: September 29, 2026
+Last updated: September 30, 2026
 
 CreditOS is the Legacy X Firm credit operating system. This document records the current high-level architecture and implementation position.
 
@@ -112,3 +112,54 @@ CreditOS should maintain a controlled evidence-based workflow:
 `Credit Data → Human Review → Evidence → Internal Case → Draft → Legal Validation → Final Approval → Real Delivery → Response/Outcome`
 
 Each stage must preserve auditability, factual grounding, role separation, and explicit gates before downstream actions.
+
+
+## Deployment Safety & Automation
+
+CreditOS production deployment now uses a guarded GitHub → Hestia workflow.
+
+### Current deployment chain
+
+`Push to main → GitHub Actions validation → Hestia deployment → production`
+
+The existing `.github/workflows/deploy-hestia.yml` workflow was hardened rather than creating a second competing deployment mechanism.
+
+### Validation gates before production
+
+Before the Hestia deployment job can run, GitHub Actions now performs:
+
+1. Repository checkout.
+2. PHP 7.4 setup.
+3. CreditOS Composer dependency installation.
+4. PHP syntax validation.
+5. Node.js 20 setup.
+6. JavaScript syntax validation with `node --check` across the CreditOS theme and core plugin.
+7. CreditOS parser smoke test.
+8. Hestia deployment only after the validation job succeeds.
+
+This specifically prevents malformed JavaScript from being deployed automatically. It addresses the class of failure that previously caused the Account Inspector to remain at “Loading account…” after a syntax error in `reports.js`.
+
+### Server-side deployment safeguards
+
+The repository also contains:
+
+- `scripts/validate-creditos.sh` — pre-deployment PHP and JavaScript validation.
+- `scripts/deploy-creditos.sh` — guarded deployment with production backup, validation, WordPress checks, cache flush, HTTP health check, and rollback handling.
+- Production Composer `vendor/` dependencies are preserved during deployment rather than deleted by repository synchronization.
+
+A controlled deployment using the server-side deployment script completed successfully before the GitHub workflow hardening.
+
+### Deployment safety commits
+
+- `ff05f66` — Restore stable Account Inspector JavaScript.
+- `7c0b012` — Add CreditOS pre-deployment validation.
+- `71eaa5a` — Add safe CreditOS deployment with validation and rollback.
+- `5520668` — Add JavaScript validation to the existing GitHub → Hestia workflow so deployment is blocked when JavaScript syntax fails.
+
+### Deployment architecture principle
+
+Production changes must not bypass validation:
+
+`Code Change → GitHub → PHP/JS Validation → Smoke Test → Hestia Deploy → Production Verification`
+
+A failed validation must stop deployment before production is changed.
