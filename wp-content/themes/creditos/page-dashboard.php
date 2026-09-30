@@ -48,29 +48,28 @@ $display_name = $user->display_name ? $user->display_name : $user->user_login;
 
   <div class="attention-strip"><div class="attention"><small>NEEDS ATTENTION</small><strong>2 follow-ups due soon</strong></div><div class="attention"><small>RECENT CHANGE</small><strong>Business roadmap advanced</strong></div><div class="attention"><small>NEXT MILESTONE</small><strong>Funding readiness review</strong></div></div>
 
-  <div class="kpis"><?php
+  <?php
 global $wpdb;
 
 $creditos_score_value = '—';
 $creditos_score_label = 'No score available in imported reports';
 
-$user_id = get_current_user_id();
-
-$client_table = $wpdb->prefix . 'creditos_clients';
-$score_table  = $wpdb->prefix . 'creditos_credit_scores';
-
 $creditos_client_id = (int) $wpdb->get_var(
     $wpdb->prepare(
-        "SELECT id FROM {$client_table} WHERE user_id = %d LIMIT 1",
-        $user_id
+        "SELECT id
+         FROM {$wpdb->prefix}creditos_clients
+         WHERE wp_user_id = %d
+         LIMIT 1",
+        get_current_user_id()
     )
 );
 
 if ($creditos_client_id > 0) {
+
     $score = $wpdb->get_row(
         $wpdb->prepare(
             "SELECT score, bureau, score_model, score_date
-             FROM {$score_table}
+             FROM {$wpdb->prefix}creditos_credit_scores
              WHERE client_id = %d
              ORDER BY
                 CASE WHEN score_date IS NULL THEN 1 ELSE 0 END,
@@ -82,6 +81,7 @@ if ($creditos_client_id > 0) {
     );
 
     if ($score) {
+
         $creditos_score_value = (string) (int) $score->score;
 
         $parts = array();
@@ -107,11 +107,8 @@ if ($creditos_client_id > 0) {
     }
 }
 ?>
-<div class="kpi creditos-personal-credit-health">
-    <small>PERSONAL CREDIT HEALTH</small>
-    <strong><?php echo esc_html($creditos_score_value); ?></strong>
-    <span><?php echo esc_html($creditos_score_label); ?></span>
-</div><div class="kpi"><small>BUSINESS SCORE</small><strong>68</strong><span>Progressing</span></div><div class="kpi"><small>ACTIVE DISPUTES</small><strong>9</strong><span>Workflow preview</span></div><div class="kpi"><small>TASKS COMPLETED</small><strong>24</strong><span>This cycle</span></div><div class="kpi"><small>FUNDING READINESS</small><strong>82%</strong><span>High</span></div></div>
+
+<div class="kpis"><div class="kpi"><small>PERSONAL CREDIT HEALTH</small><strong><?php echo esc_html($creditos_score_value); ?></strong><span><?php echo esc_html($creditos_score_label); ?></span></div><div class="kpi"><small>BUSINESS SCORE</small><strong>68</strong><span>Progressing</span></div><div class="kpi"><small>ACTIVE DISPUTES</small><strong>9</strong><span>Workflow preview</span></div><div class="kpi"><small>TASKS COMPLETED</small><strong>24</strong><span>This cycle</span></div><div class="kpi"><small>FUNDING READINESS</small><strong>82%</strong><span>High</span></div></div>
 
   <div class="section-label" id="roadmaps"><h3>Your Guided Credit Roadmaps</h3><a href="#">View All Roadmaps →</a></div>
   <div class="roadmap-grid">
