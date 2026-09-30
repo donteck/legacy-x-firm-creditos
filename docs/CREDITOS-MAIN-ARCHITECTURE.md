@@ -11,8 +11,55 @@ CreditOS is the Legacy X Firm credit operating system. This document records the
 - 🔵 **Blue — Upcoming / Planned:** Planned future architecture that has not yet entered active implementation.
 - ⚪ **White — Final / Later Phase:** Reserved for final production, QA, or later-stage completion work.
 
+> **ENTIRE PROJECT POSITION:** 🟡 **Architecture #11 of 26 — Case Management Engine.**
 > **Current main-architecture zone:** 🟡 **#8–#11 — Account/Tradeline Inspector → Discrepancy/Evidence → Case Management.**
-> **Current detailed workflow position:** 🟡 **Stage 3 — CASE.**
+> **Current detailed workflow position:** 🟡 **Stage 3 of 7 — CASE.**
+> **Next architecture target:** #12 — Dispute Drafting Engine.
+> **Production engineering:** GitHub → validation → Hestia deployment protection is now in place.
+
+## Entire Project Progress Snapshot
+
+This section is the quick locator for the whole CreditOS project. It should be updated whenever the active architecture phase changes.
+
+### Where we are now
+
+**Current architecture:** **#11 of 26 — Case Management Engine**
+
+**Current account workflow:** **Stage 3 of 7 — Case**
+
+**Immediate objective:** finish Case authorization, factual-readiness safeguards, and Case Preparation validation before advancing the active workflow to **#12 / Stage 4 — Draft**.
+
+### Whole-project map
+
+| Range | Project area | Current position |
+|---|---|---|
+| #1–#7 | Foundation → Intake → Parsing → Report Inspector | 🟢 Core foundation built |
+| #8–#10 | Account/Collections → Discrepancy/Evidence | 🟡 Core built; hardening/parity remains |
+| **#11** | **Case Management Engine** | 🟡 **YOU ARE HERE** |
+| #12–#17 | Draft → Legal → Approval → Delivery → Response → Outcome | 🟡 Core components exist; systematic hardening follows |
+| #18–#24 | Multi-round lifecycle → bureau sync → AI → automation → communications → billing → operations | 🔵 Advanced/future implementation |
+| #25 | Security / Audit / Compliance Hardening | 🟡 Cross-cutting work already underway; final hardening remains |
+| #26 | Production QA / Launch Readiness | ⚪ Final phase |
+
+### Active workflow locator
+
+`Review ✅ → Evidence ✅ → CASE 🟡 ← YOU ARE HERE → Draft → Legal → Approval → Delivery → Response/Outcome`
+
+### Important distinction
+
+The project is **not simply 11/26 “percent complete.”** Several later engines (#12–#17) already have core implementation, while some earlier areas still require hardening. The architecture number identifies the **current systematic development/hardening position**, not a mathematical completion percentage.
+
+### What must happen before moving the marker
+
+The project marker moves from **#11 Case Management** to **#12 Dispute Drafting** only after:
+
+1. Case Candidate permissions are confirmed and enforced.
+2. Case readiness requires factual discrepancy data and accepted evidence.
+3. Case Preparation GET/POST authorization is verified.
+4. Account Inspector Stage 3 correctly restores and displays state after reload.
+5. Backend remains authoritative even if frontend controls are bypassed.
+6. Relevant PHP and JavaScript validation passes.
+7. The guarded GitHub → Hestia deployment completes successfully and the live Account Inspector remains healthy.
 
 ## Main Architecture Status
 
