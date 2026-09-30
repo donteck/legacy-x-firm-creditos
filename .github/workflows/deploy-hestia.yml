@@ -31,6 +31,11 @@ jobs:
           php-version: '7.4'
           coverage: none
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install CreditOS PHP dependencies
         shell: bash
         run: |
@@ -44,6 +49,16 @@ jobs:
           while IFS= read -r -d '' file; do
             php -l "$file"
           done < <(find wp-content -type f -name '*.php' ! -path '*/vendor/*' -print0)
+
+      - name: JavaScript syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find wp-content/themes/creditos wp-content/plugins/creditos-core -type f -name '*.js' ! -path '*/vendor/*' -print0)
+          echo "CreditOS JavaScript syntax check passed"
 
       - name: CreditOS parser smoke test
         shell: bash
