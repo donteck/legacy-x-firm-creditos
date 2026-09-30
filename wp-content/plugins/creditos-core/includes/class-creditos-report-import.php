@@ -83,18 +83,51 @@ class CreditOS_Report_Import {
         "CREATE TABLE {$p}creditos_collections (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,bureau VARCHAR(40) NULL,collector_name VARCHAR(190) NOT NULL,original_creditor VARCHAR(190) NULL,balance DECIMAL(14,2) NULL,assigned_date DATE NULL,status VARCHAR(100) NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY report_id(report_id),KEY client_id(client_id)) $c;",
         "CREATE TABLE {$p}creditos_inquiries (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,bureau VARCHAR(40) NULL,creditor_name VARCHAR(190) NOT NULL,inquiry_type VARCHAR(40) NULL,inquiry_date DATE NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY report_id(report_id),KEY client_id(client_id)) $c;",
         "CREATE TABLE {$p}creditos_personal_information (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,bureau VARCHAR(40) NULL,info_type VARCHAR(40) NOT NULL,info_value VARCHAR(255) NOT NULL,status VARCHAR(30) NOT NULL DEFAULT 'reported',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY report_id(report_id),KEY client_id(client_id),KEY info_type(info_type)) $c;",
+        "CREATE TABLE {$p}creditos_credit_scores (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,bureau VARCHAR(40) NOT NULL,score SMALLINT UNSIGNED NOT NULL,score_model VARCHAR(100) NULL,score_date DATE NULL,source_type VARCHAR(40) NOT NULL DEFAULT 'credit_report',provider VARCHAR(80) NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY report_id(report_id),KEY client_id(client_id),KEY bureau(bureau),KEY score_date(score_date)) $c;",
         "CREATE TABLE {$p}creditos_tradeline_corrections (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,tradeline_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,field_name VARCHAR(50) NOT NULL,original_value TEXT NULL,reviewed_value TEXT NULL,reason TEXT NOT NULL,reviewed_by BIGINT UNSIGNED NOT NULL,reviewed_at DATETIME NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY tradeline_id(tradeline_id),KEY report_id(report_id),KEY client_id(client_id),KEY field_name(field_name)) $c;"
         ); foreach($tables as$sql)dbDelta($sql); update_option('creditos_reports_schema_version',CREDITOS_CORE_VERSION);
     }
 
     private function ensure_tradeline_corrections_table(){
         require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
-        dbDelta("CREATE TABLE {$p}creditos_tradeline_corrections (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,tradeline_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,field_name VARCHAR(50) NOT NULL,original_value TEXT NULL,reviewed_value TEXT NULL,reason TEXT NOT NULL,reviewed_by BIGINT UNSIGNED NOT NULL,reviewed_at DATETIME NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY tradeline_id(tradeline_id),KEY report_id(report_id),KEY client_id(client_id),KEY field_name(field_name)) $c;");
+        dbDelta("CREATE TABLE {$p}creditos_tradeline_corrections (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            report_id BIGINT UNSIGNED NOT NULL,
+            tradeline_id BIGINT UNSIGNED NOT NULL,
+            client_id BIGINT UNSIGNED NOT NULL,
+            field_name VARCHAR(50) NOT NULL,
+            original_value TEXT NULL,
+            reviewed_value TEXT NULL,
+            reason TEXT NOT NULL,
+            reviewed_by BIGINT UNSIGNED NOT NULL,
+            reviewed_at DATETIME NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY tradeline_id (tradeline_id),
+            KEY report_id (report_id),
+            KEY client_id (client_id),
+            KEY field_name (field_name)
+        ) $c;");
     }
 
     private function ensure_report_versions_table(){
         require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
-        dbDelta("CREATE TABLE {$p}creditos_report_versions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,version_number INT UNSIGNED NOT NULL,event_type VARCHAR(40) NOT NULL DEFAULT 'normalization',snapshot LONGTEXT NOT NULL,snapshot_hash VARCHAR(64) NOT NULL DEFAULT '',record_count INT UNSIGNED NOT NULL DEFAULT 0,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),UNIQUE KEY report_version(report_id,version_number),KEY client_id(client_id),KEY created_at(created_at)) $c;");
+        dbDelta("CREATE TABLE {$p}creditos_report_versions (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            report_id BIGINT UNSIGNED NOT NULL,
+            client_id BIGINT UNSIGNED NOT NULL,
+            version_number INT UNSIGNED NOT NULL,
+            event_type VARCHAR(40) NOT NULL DEFAULT 'normalization',
+            snapshot LONGTEXT NOT NULL,
+            snapshot_hash VARCHAR(64) NOT NULL DEFAULT '',
+            record_count INT UNSIGNED NOT NULL DEFAULT 0,
+            created_by BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY report_version (report_id,version_number),
+            KEY client_id (client_id),
+            KEY created_at (created_at)
+        ) $c;");
     }
 
     private function create_report_version($rid,$cid,$event_type='normalization'){
@@ -153,7 +186,26 @@ class CreditOS_Report_Import {
 
     private function ensure_collection_evidence_table(){
         require_once ABSPATH.'wp-admin/includes/upgrade.php'; $p=$this->wpdb->prefix; $c=$this->wpdb->get_charset_collate();
-        dbDelta("CREATE TABLE {$p}creditos_collection_evidence (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,report_id BIGINT UNSIGNED NOT NULL,client_id BIGINT UNSIGNED NOT NULL,collection_id BIGINT UNSIGNED NOT NULL,file_name VARCHAR(255) NOT NULL,mime_type VARCHAR(100) NOT NULL,file_size BIGINT UNSIGNED NOT NULL DEFAULT 0,checksum VARCHAR(128) NOT NULL,evidence_type VARCHAR(40) NOT NULL DEFAULT 'other',review_status VARCHAR(30) NOT NULL DEFAULT 'pending',reviewed_by BIGINT UNSIGNED NULL,reviewed_at DATETIME NULL,created_by BIGINT UNSIGNED NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY report_id(report_id),KEY client_id(client_id),KEY collection_id(collection_id)) $c;");
+        dbDelta("CREATE TABLE {$p}creditos_collection_evidence (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            report_id BIGINT UNSIGNED NOT NULL,
+            client_id BIGINT UNSIGNED NOT NULL,
+            collection_id BIGINT UNSIGNED NOT NULL,
+            file_name VARCHAR(255) NOT NULL,
+            mime_type VARCHAR(100) NOT NULL,
+            file_size BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            checksum VARCHAR(128) NOT NULL,
+            evidence_type VARCHAR(40) NOT NULL DEFAULT 'other',
+            review_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+            reviewed_by BIGINT UNSIGNED NULL,
+            reviewed_at DATETIME NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY report_id (report_id),
+            KEY client_id (client_id),
+            KEY collection_id (collection_id)
+        ) $c;");
     }
 
     private function ensure_dispute_candidate_columns(){ $table=$this->wpdb->prefix.'creditos_dispute_items'; $exists=$this->wpdb->get_var($this->wpdb->prepare("SHOW TABLES LIKE %s",$table)); if($exists!==$table)return; $required=array('report_id'=>"BIGINT UNSIGNED NULL",'client_id'=>"BIGINT UNSIGNED NULL",'tradeline_id'=>"BIGINT UNSIGNED NULL",'collection_id'=>"BIGINT UNSIGNED NULL",'candidate_status'=>"VARCHAR(30) NOT NULL DEFAULT 'candidate'"); foreach($required as $column=>$definition){$has=$this->wpdb->get_var($this->wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",$column));if(!$has)$this->wpdb->query("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");}}
@@ -178,7 +230,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_evidence'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'upload_tradeline_evidence'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence/(?P<evidence_id>\\d+)',array('methods'=>WP_REST_Server::DELETABLE,'callback'=>array($this,'delete_tradeline_evidence'),'permission_callback'=>array($this,'client_access')));
-        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence/(?P<evidence_id>\\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline_evidence_file'),'permission_callback'=>array($this,'client_access')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence/(?P<evidence_id>\\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline_evidence_file'),'permission_callback'=>array($this,'can_review_evidence')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'get_dispute_candidate'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_dispute_candidate'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reviews',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_saved_reviews'),'permission_callback'=>array($this,'client_access')));
@@ -190,6 +242,12 @@ class CreditOS_Report_Import {
     public function logged_in(){return is_user_logged_in();}
     public function client_access(){if(!is_user_logged_in())return false;return(bool)$this->current_client();}
     public function staff_only(){return is_user_logged_in()&&(current_user_can('manage_options')||current_user_can('creditos_manage_clients'));}
+    public function can_review_evidence(){
+        return is_user_logged_in() && (
+            current_user_can('manage_options') ||
+            current_user_can('creditos_manage_disputes')
+        );
+    }
     private function current_client(){return $this->repository->get_or_create_client_for_user(get_current_user_id());}
     private function consent_is_valid($id){$t=$this->wpdb->prefix.'creditos_onboarding';return(bool)$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$t} WHERE client_id=%d AND consented_at IS NOT NULL LIMIT 1",$id));}
 
@@ -223,12 +281,6 @@ class CreditOS_Report_Import {
                 $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>false));
                 return false;
             }
-            clearstatcache(true,$path); $perms=@fileperms($path);
-            if(is_link($path)||!is_file($path)||false===$perms||0600!==($perms&0777)){
-                $this->mark_failed($rid,$cid,'The uploaded report source failed its filesystem security check and cannot be processed.');
-                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>true,'secure_permissions'=>false));
-                return false;
-            }
             if('1'!==get_post_meta($attachment_id,'_creditos_private_storage',true)){
                 $migrated=$this->migrate_legacy_report_to_private_storage($attachment_id);
                 if(!$migrated){
@@ -239,6 +291,14 @@ class CreditOS_Report_Import {
                 $path=$migrated;
                 $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_migrated_private','credit_report',$rid,array('legacy_private_migration'=>true));
             }
+
+            clearstatcache(true,$path); $perms=@fileperms($path);
+            if(is_link($path)||!is_file($path)||false===$perms||0600!==($perms&0777)){
+                $this->mark_failed($rid,$cid,'The uploaded report source failed its filesystem security check and cannot be processed.');
+                $this->repository->audit(get_current_user_id(),$cid,'credit_report_source_integrity_failed','credit_report',$rid,array('private_marker_present'=>true,'secure_permissions'=>false));
+                return false;
+            }
+
             $realpath=realpath($path);
             $private_root=realpath(dirname(rtrim(ABSPATH,DIRECTORY_SEPARATOR)).DIRECTORY_SEPARATOR.'creditos-private'.DIRECTORY_SEPARATOR.'reports');
             $private_marked='1'===get_post_meta($attachment_id,'_creditos_private_storage',true);
@@ -323,7 +383,14 @@ class CreditOS_Report_Import {
     }
 
     private function evidence_private_root(){return dirname(rtrim(ABSPATH,DIRECTORY_SEPARATOR)).DIRECTORY_SEPARATOR.'creditos-private'.DIRECTORY_SEPARATOR.'evidence';}
-    public function tradeline_evidence($request){$client=$this->current_client();if(!$client)return new WP_Error('creditos_client_missing','Client profile not found.',array('status'=>403));$rid=absint($request['id']);$tid=absint($request['tradeline_id']);$t=$this->wpdb->prefix.'creditos_tradelines';$ok=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id));if(!$ok)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));$et=$this->wpdb->prefix.'creditos_tradeline_evidence';$rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,file_name,mime_type,file_size,evidence_type,review_status,reviewed_by,reviewed_at,created_by,created_at FROM {$et} WHERE report_id=%d AND client_id=%d AND tradeline_id=%d ORDER BY created_at DESC,id DESC",$rid,$client->id,$tid),ARRAY_A);return rest_ensure_response(array('evidence'=>$rows,'count'=>count($rows)));}
+    public function tradeline_evidence($request){$client=$this->current_client();if(!$client)return new WP_Error('creditos_client_missing','Client profile not found.',array('status'=>403));$rid=absint($request['id']);$tid=absint($request['tradeline_id']);$t=$this->wpdb->prefix.'creditos_tradelines';$ok=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id));if(!$ok)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));$et=$this->wpdb->prefix.'creditos_tradeline_evidence';$rows=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,file_name,mime_type,file_size,evidence_type,review_status,reviewed_by,reviewed_at,created_by,created_at FROM {$et} WHERE report_id=%d AND client_id=%d AND tradeline_id=%d ORDER BY created_at DESC,id DESC",$rid,$client->id,$tid),ARRAY_A);return rest_ensure_response(array(
+'evidence'=>$rows,
+'count'=>count($rows),
+'can_review'=>(
+    current_user_can('manage_options') ||
+    current_user_can('creditos_manage_disputes')
+)
+));}
     public function upload_tradeline_evidence($request){$client=$this->current_client();if(!$client)return new WP_Error('creditos_client_missing','Client profile not found.',array('status'=>403));$rid=absint($request['id']);$tid=absint($request['tradeline_id']);$t=$this->wpdb->prefix.'creditos_tradelines';$ok=$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id));if(!$ok)return new WP_Error('creditos_tradeline_not_found','Tradeline not found.',array('status'=>404));$files=$request->get_file_params();$file=$files['evidence']??null;if(!$file||empty($file['tmp_name'])||!is_uploaded_file($file['tmp_name']))return new WP_Error('creditos_evidence_missing','Choose an evidence file.',array('status'=>400));if((int)$file['size']>10*1024*1024)return new WP_Error('creditos_evidence_too_large','Evidence files are limited to 10 MB.',array('status'=>413));$check=wp_check_filetype_and_ext($file['tmp_name'],$file['name'],array('pdf'=>'application/pdf','jpg|jpeg'=>'image/jpeg','png'=>'image/png'));if(empty($check['ext'])||empty($check['type']))return new WP_Error('creditos_evidence_type','Only PDF, JPG, and PNG evidence files are accepted.',array('status'=>415));$root=$this->evidence_private_root();if(!is_dir($root)&&!wp_mkdir_p($root))return new WP_Error('creditos_evidence_storage','Private evidence storage is unavailable.',array('status'=>500));@chmod(dirname($root),0700);@chmod($root,0700);if(!is_writable($root))return new WP_Error('creditos_evidence_storage','Private evidence storage is unavailable.',array('status'=>500));$name=$tid.'-'.wp_generate_password(24,false,false).'.'.$check['ext'];$dest=$root.DIRECTORY_SEPARATOR.$name;if(!@move_uploaded_file($file['tmp_name'],$dest))return new WP_Error('creditos_evidence_store_failed','Evidence could not be stored.',array('status'=>500));@chmod($dest,0600);clearstatcache(true,$dest);$real=realpath($dest);$public=realpath(ABSPATH);$perms=@fileperms($dest);if(!$real||($public&&0===strpos($real,rtrim($public,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR))||false===$perms||0600!==($perms&0777)){@unlink($dest);return new WP_Error('creditos_evidence_isolation_failed','Evidence storage isolation could not be verified.',array('status'=>500));}$checksum=hash_file('sha256',$dest);$et=$this->wpdb->prefix.'creditos_tradeline_evidence';$saved=$this->wpdb->insert($et,array('report_id'=>$rid,'client_id'=>$client->id,'tradeline_id'=>$tid,'attachment_id'=>0,'file_name'=>sanitize_file_name($file['name']),'mime_type'=>$check['type'],'file_size'=>(int)$file['size'],'checksum'=>$checksum,'evidence_type'=>'other','review_status'=>'pending','created_by'=>get_current_user_id(),'created_at'=>current_time('mysql')));if(false===$saved){@unlink($dest);return new WP_Error('creditos_evidence_db','Evidence metadata could not be saved.',array('status'=>500));}$this->repository->audit(get_current_user_id(),$client->id,'tradeline_evidence_uploaded','tradeline',$tid,array('report_id'=>$rid,'evidence_id'=>(int)$this->wpdb->insert_id,'mime_type'=>$check['type'],'file_size'=>(int)$file['size']));return rest_ensure_response(array('success'=>true,'evidence_id'=>(int)$this->wpdb->insert_id));}
 
     private function collection_context($rid,$cid,$client){$t=$this->wpdb->prefix.'creditos_collections';return $this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,collector_name,original_creditor,review_status,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes FROM {$t} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$cid,$rid,$client->id),ARRAY_A);}
@@ -377,8 +444,26 @@ class CreditOS_Report_Import {
         $evidence_status=sanitize_key($data['evidence_status']??'not_requested'); if(!in_array($evidence_status,$allowed_evidence,true))$evidence_status='not_requested';
         $allowed_fields=array('','creditor_name','account_number_masked','account_type','responsibility','opened_date','status','status_updated','balance','credit_limit','past_due','payment_status','balance_updated','remarks');
         $dfield=sanitize_key($data['discrepancy_field']??''); if(!in_array($dfield,$allowed_fields,true))$dfield='';
+
+        $details=sanitize_textarea_field($data['discrepancy_details']??'');
+        $reviewer_notes=sanitize_textarea_field($data['reviewer_notes']??'');
+
+        if('potential_inaccuracy'===$status){
+            if(empty($dtype))
+                return new WP_Error('creditos_discrepancy_type_required','Choose the factual issue type before saving Potential Inaccuracy.',array('status'=>400));
+
+            if(empty($dfield))
+                return new WP_Error('creditos_discrepancy_field_required','Choose the reported field that needs verification.',array('status'=>400));
+
+            if(empty(trim($details)))
+                return new WP_Error('creditos_discrepancy_details_required','Describe the factual discrepancy before saving Potential Inaccuracy.',array('status'=>400));
+
+            if(empty(trim($reviewer_notes)))
+                return new WP_Error('creditos_reviewer_notes_required','Add factual reviewer notes before saving Potential Inaccuracy.',array('status'=>400));
+        }
+
         $before=$this->wpdb->get_row($this->wpdb->prepare("SELECT review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at FROM {$table} WHERE id=%d AND report_id=%d AND client_id=%d LIMIT 1",$tid,$rid,$client->id),ARRAY_A);
-        $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>sanitize_textarea_field($data['reviewer_notes']??''),'discrepancy_type'=>$dtype?:null,'discrepancy_field'=>$dfield?:null,'discrepancy_details'=>sanitize_textarea_field($data['discrepancy_details']??''),'evidence_status'=>$evidence_status,'evidence_notes'=>sanitize_textarea_field($data['evidence_notes']??''),'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')),array('id'=>$tid,'report_id'=>$rid,'client_id'=>$client->id));
+        $ok=$this->wpdb->update($table,array('review_status'=>$status,'reviewer_notes'=>$reviewer_notes,'discrepancy_type'=>$dtype?:null,'discrepancy_field'=>$dfield?:null,'discrepancy_details'=>$details,'evidence_status'=>$evidence_status,'evidence_notes'=>sanitize_textarea_field($data['evidence_notes']??''),'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')),array('id'=>$tid,'report_id'=>$rid,'client_id'=>$client->id));
         if(false===$ok)return new WP_Error('creditos_review_save_failed','The account review could not be saved.',array('status'=>500));
         $this->repository->audit(get_current_user_id(),$client->id,'tradeline_review_saved','tradeline',$tid,array('report_id'=>$rid,'review_status'=>$status,'discrepancy_type'=>$dtype,'discrepancy_field'=>$dfield,'evidence_status'=>$evidence_status,'previous_review'=>$before,'history_version'=>gmdate('YmdHis')));
         return rest_ensure_response(array('success'=>true,'review_status'=>$status,'reviewed_by'=>get_current_user_id(),'reviewed_at'=>current_time('mysql')));
@@ -441,18 +526,35 @@ class CreditOS_Report_Import {
 
     private function apply_normalized_payload($rid,$cid,array$payload,$event_type='normalization'){$p=$this->wpdb->prefix;
         // Validate the new payload before deleting any previously normalized records.
-        $incoming=0; foreach(array('tradelines','collections','inquiries','personal_information')as$table)$incoming+=count((array)($payload[$table]??array()));
+        $incoming=0; foreach(array('tradelines','collections','inquiries','personal_information','scores')as$table)$incoming+=count((array)($payload[$table]??array()));
         if($incoming<1){$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'needs_review','error_message'=>'No structured credit records were extracted. Existing normalized records were preserved.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));return false;}
         $this->wpdb->query('START TRANSACTION');
         $write_failed=false;
-        foreach(array('tradelines','collections','inquiries','personal_information')as$table){
-            $deleted=$this->wpdb->delete($p.'creditos_'.$table,array('report_id'=>$rid,'client_id'=>$cid));
+        foreach(array('tradelines','collections','inquiries','personal_information','scores')as$table){
+            $deleted=$this->wpdb->delete($p.('scores'===$table?'creditos_credit_scores':'creditos_'.$table),array('report_id'=>$rid,'client_id'=>$cid));
             if(false===$deleted){$this->wpdb->query('ROLLBACK');$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>'Existing normalized records could not be safely replaced. Previous data was preserved.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));$this->repository->audit(get_current_user_id(),$cid,'credit_report_replacement_aborted','credit_report',$rid,array('stage'=>'delete_'.$table));return false;}
         }
         $this->wpdb->delete($p.'creditos_payment_history',array('report_id'=>$rid,'client_id'=>$cid));
         foreach((array)($payload['tradelines']??array())as$r){if(empty($r['creditor_name']))continue;if(false===$this->wpdb->insert($p.'creditos_tradelines',array('report_id'=>$rid,'client_id'=>$cid,'bureau'=>sanitize_key($r['bureau']??''),'creditor_name'=>sanitize_text_field($r['creditor_name']),'account_number_masked'=>sanitize_text_field($r['account_number_masked']??''),'account_type'=>sanitize_text_field($r['account_type']??''),'opened_date'=>$this->clean_date($r['opened_date']??''),'status'=>sanitize_text_field($r['status']??''),'status_updated'=>$this->clean_date($r['status_updated']??''),'balance'=>$this->money($r['balance']??null),'credit_limit'=>$this->money($r['credit_limit']??null),'past_due'=>$this->money($r['past_due']??null),'payment_status'=>sanitize_text_field($r['payment_status']??''),'balance_updated'=>$this->clean_date($r['balance_updated']??''),'date_reported'=>$this->clean_date($r['date_reported']??''),'remarks'=>sanitize_textarea_field($r['remarks']??''),'responsibility'=>sanitize_text_field($r['responsibility']??''),'created_at'=>current_time('mysql')))){$write_failed=true;continue;}$tid=(int)$this->wpdb->insert_id;foreach((array)($r['payment_history']??array())as$h){$month=$this->clean_date($h['history_month']??$h['month']??'');$status=sanitize_text_field($h['payment_status']??$h['status']??'');if(!$month||$status==='')continue;$ok=$this->wpdb->insert($p.'creditos_payment_history',array('report_id'=>$rid,'client_id'=>$cid,'tradeline_id'=>$tid,'bureau'=>sanitize_key($r['bureau']??''),'history_month'=>gmdate('Y-m-01',strtotime($month)),'payment_status'=>$status,'source_label'=>sanitize_text_field($h['source_label']??''),'created_at'=>current_time('mysql')));if(false===$ok)$write_failed=true;}}
         foreach((array)($payload['collections']??array())as$r){if(empty($r['collector_name']))continue;if(false===$this->wpdb->insert($p.'creditos_collections',array('report_id'=>$rid,'client_id'=>$cid,'bureau'=>sanitize_key($r['bureau']??''),'collector_name'=>sanitize_text_field($r['collector_name']),'original_creditor'=>sanitize_text_field($r['original_creditor']??''),'balance'=>$this->money($r['balance']??null),'assigned_date'=>$this->clean_date($r['assigned_date']??''),'status'=>sanitize_text_field($r['status']??''),'created_at'=>current_time('mysql'))))$write_failed=true;}
         foreach((array)($payload['inquiries']??array())as$r){if(empty($r['creditor_name']))continue;if(false===$this->wpdb->insert($p.'creditos_inquiries',array('report_id'=>$rid,'client_id'=>$cid,'bureau'=>sanitize_key($r['bureau']??''),'creditor_name'=>sanitize_text_field($r['creditor_name']),'inquiry_type'=>sanitize_key($r['inquiry_type']??''),'inquiry_date'=>$this->clean_date($r['inquiry_date']??''),'created_at'=>current_time('mysql'))))$write_failed=true;}
+        foreach((array)($payload['scores']??array())as$r){
+            $score=isset($r['score'])?(int)$r['score']:0;
+            $bureau=sanitize_key($r['bureau']??'');
+            if($score<300||$score>850||!in_array($bureau,array('experian','equifax','transunion'),true))continue;
+            if(false===$this->wpdb->insert($p.'creditos_credit_scores',array(
+                'report_id'=>$rid,
+                'client_id'=>$cid,
+                'bureau'=>$bureau,
+                'score'=>$score,
+                'score_model'=>sanitize_text_field($r['score_model']??''),
+                'score_date'=>$this->clean_date($r['score_date']??''),
+                'source_type'=>sanitize_key($r['source_type']??'credit_report'),
+                'provider'=>sanitize_text_field($r['provider']??''),
+                'created_at'=>current_time('mysql'),
+                'updated_at'=>current_time('mysql')
+            )))$write_failed=true;
+        }
         foreach((array)($payload['personal_information']??array())as$r){if(empty($r['info_type'])||empty($r['info_value']))continue;if(false===$this->wpdb->insert($p.'creditos_personal_information',array('report_id'=>$rid,'client_id'=>$cid,'bureau'=>sanitize_key($r['bureau']??''),'info_type'=>sanitize_key($r['info_type']),'info_value'=>sanitize_text_field($r['info_value']),'status'=>'reported','created_at'=>current_time('mysql'))))$write_failed=true;}
         if($write_failed||$this->wpdb->last_error){$db_error=(string)$this->wpdb->last_error;$this->wpdb->query('ROLLBACK');$this->wpdb->update($p.'creditos_credit_reports',array('status'=>'needs_review','parser_status'=>'failed','error_message'=>'Normalized records could not be saved. Previous normalized data was preserved.','updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));$this->repository->audit(get_current_user_id(),$cid,'credit_report_replacement_aborted','credit_report',$rid,array('stage'=>'insert','database_error_present'=>$db_error!==''));return false;}
         $counts=array();foreach(array('tradelines','collections','inquiries','personal_information')as$table)$counts[$table]=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_{$table} WHERE report_id=%d AND client_id=%d",$rid,$cid));
@@ -468,5 +570,5 @@ class CreditOS_Report_Import {
         $this->repository->audit(get_current_user_id(),$cid,'credit_report_version_created','credit_report',$rid,$version_result);
         $this->wpdb->update($p.'creditos_credit_reports',array('status'=>'ready_for_review','parser_status'=>'normalized','error_message'=>null,'updated_at'=>current_time('mysql')),array('id'=>$rid,'client_id'=>$cid));return true;}
 
-    private function report_payload($rid,$cid){$p=$this->wpdb->prefix;$report=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,provider,report_date,imported_at,status,parser_status,source_format,source_filename,error_message FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid),ARRAY_A);if(!$report)return null;$report['tradelines']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,account_number_masked,account_type,opened_date,status,status_updated,balance,credit_limit,past_due,payment_status,balance_updated,date_reported,remarks,responsibility,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_tradelines WHERE report_id=%d AND client_id=%d ORDER BY creditor_name",$rid,$cid),ARRAY_A);$report['collections']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,collector_name,original_creditor,balance,assigned_date,status,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_collections WHERE report_id=%d AND client_id=%d ORDER BY collector_name",$rid,$cid),ARRAY_A);$report['inquiries']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,inquiry_type,inquiry_date,created_at FROM {$p}creditos_inquiries WHERE report_id=%d AND client_id=%d ORDER BY inquiry_date DESC",$rid,$cid),ARRAY_A);$report['personal_information']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,info_type,info_value,status,created_at FROM {$p}creditos_personal_information WHERE report_id=%d AND client_id=%d ORDER BY info_type,info_value",$rid,$cid),ARRAY_A);return$report;}
+    private function report_payload($rid,$cid){$p=$this->wpdb->prefix;$report=$this->wpdb->get_row($this->wpdb->prepare("SELECT id,bureau,provider,report_date,imported_at,status,parser_status,source_format,source_filename,error_message FROM {$p}creditos_credit_reports WHERE id=%d AND client_id=%d LIMIT 1",$rid,$cid),ARRAY_A);if(!$report)return null;$report['tradelines']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,account_number_masked,account_type,opened_date,status,status_updated,balance,credit_limit,past_due,payment_status,balance_updated,date_reported,remarks,responsibility,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_tradelines WHERE report_id=%d AND client_id=%d ORDER BY creditor_name",$rid,$cid),ARRAY_A);$report['collections']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,collector_name,original_creditor,balance,assigned_date,status,review_status,reviewer_notes,discrepancy_type,discrepancy_field,discrepancy_details,evidence_status,evidence_notes,reviewed_by,reviewed_at,created_at FROM {$p}creditos_collections WHERE report_id=%d AND client_id=%d ORDER BY collector_name",$rid,$cid),ARRAY_A);$report['inquiries']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,creditor_name,inquiry_type,inquiry_date,created_at FROM {$p}creditos_inquiries WHERE report_id=%d AND client_id=%d ORDER BY inquiry_date DESC",$rid,$cid),ARRAY_A);$report['scores']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,score,score_model,score_date,source_type,provider,created_at,updated_at FROM {$p}creditos_credit_scores WHERE report_id=%d AND client_id=%d ORDER BY score_date DESC,id DESC",$rid,$cid),ARRAY_A);$report['personal_information']=$this->wpdb->get_results($this->wpdb->prepare("SELECT id,report_id,bureau,info_type,info_value,status,created_at FROM {$p}creditos_personal_information WHERE report_id=%d AND client_id=%d ORDER BY info_type,info_value",$rid,$cid),ARRAY_A);return$report;}
 }
