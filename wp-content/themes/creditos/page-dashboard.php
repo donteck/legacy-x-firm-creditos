@@ -108,7 +108,11 @@ if ($creditos_client_id > 0) {
 }
 ?>
 
-<div class="kpis"><div class="kpi"><small>PERSONAL CREDIT HEALTH</small><strong><?php echo esc_html($creditos_score_value); ?></strong><span><?php echo esc_html($creditos_score_label); ?></span></div><div class="kpi"><small>BUSINESS SCORE</small><strong>68</strong><span>Progressing</span></div><?php
+<div class="kpis"><div class="kpi"><small>PERSONAL CREDIT HEALTH</small><strong><?php echo esc_html($creditos_score_value); ?></strong><span><?php echo esc_html($creditos_score_label); ?></span></div><div class="kpi">
+    <small>BUSINESS SCORE</small>
+    <strong>—</strong>
+    <span>Business score not available</span>
+</div><?php
 $creditos_active_disputes = 0;
 
 if (!empty($creditos_client_id)) {
@@ -127,7 +131,57 @@ if (!empty($creditos_client_id)) {
     <small>ACTIVE DISPUTES</small>
     <strong><?php echo esc_html((string) $creditos_active_disputes); ?></strong>
     <span><?php echo $creditos_active_disputes === 1 ? 'Active case' : 'Active cases'; ?></span>
-</div><div class="kpi"><small>TASKS COMPLETED</small><strong>24</strong><span>This cycle</span></div><div class="kpi"><small>FUNDING READINESS</small><strong>82%</strong><span>High</span></div></div>
+</div><?php
+$creditos_completed_tasks = 0;
+
+if (!empty($creditos_client_id)) {
+    $creditos_completed_tasks = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*)
+             FROM {$wpdb->prefix}creditos_tasks
+             WHERE client_id = %d
+               AND completed_at IS NOT NULL",
+            $creditos_client_id
+        )
+    );
+}
+?>
+<div class="kpi">
+    <small>TASKS COMPLETED</small>
+    <strong><?php echo esc_html((string) $creditos_completed_tasks); ?></strong>
+    <span><?php echo $creditos_completed_tasks === 1 ? 'Completed task' : 'Completed tasks'; ?></span>
+</div><?php
+$creditos_funding_value = '—';
+$creditos_funding_label = 'Funding readiness not available';
+
+if (!empty($creditos_client_id)) {
+    $creditos_funding_progress = $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT AVG(percent_complete)
+             FROM {$wpdb->prefix}creditos_roadmap_progress
+             WHERE client_id = %d
+               AND roadmap_type = %s",
+            $creditos_client_id,
+            'funding'
+        )
+    );
+
+    if ($creditos_funding_progress !== null) {
+        $creditos_funding_percent = max(
+            0,
+            min(100, round((float) $creditos_funding_progress))
+        );
+
+        $creditos_funding_value = $creditos_funding_percent . '%';
+        $creditos_funding_label = 'Funding roadmap progress';
+    }
+}
+?>
+<div class="kpi">
+    <small>FUNDING READINESS</small>
+    <strong><?php echo esc_html($creditos_funding_value); ?></strong>
+    <span><?php echo esc_html($creditos_funding_label); ?></span>
+</div></div>
 
   <div class="section-label" id="roadmaps"><h3>Your Guided Credit Roadmaps</h3><a href="#">View All Roadmaps →</a></div>
   <div class="roadmap-grid">
@@ -136,7 +190,7 @@ if (!empty($creditos_client_id)) {
   </div>
 
   <div class="section-label"><h3>Goal Journeys</h3><a href="#">Manage Goals →</a></div>
-  <div class="goal-journeys"><div class="goal-journey"><small>HOME READINESS</small><strong>Preparation Plan</strong><div class="bar"><i style="width:64%"></i></div><p>64% complete · priority tasks remain.</p></div><div class="goal-journey"><small>BUSINESS FUNDING</small><strong>Funding Readiness</strong><div class="bar"><i style="width:82%"></i></div><p>82% ready · verify remaining business items next.</p></div><div class="goal-journey"><small>CREDIT HEALTH</small><strong>Optimization Journey</strong><div class="bar"><i style="width:71%"></i></div><p>71% complete · utilization remains a priority factor.</p></div></div>
+  <div class="goal-journeys"><div class="goal-journey"><small>HOME READINESS</small><strong>Preparation Plan</strong><div class="bar"><i style="width:0%"></i></div><p>Progress not available yet.</p></div><div class="goal-journey"><small>BUSINESS FUNDING</small><strong>Funding Readiness</strong><div class="bar"><i style="width:0%"></i></div><p>Funding roadmap not available yet.</p></div><div class="goal-journey"><small>CREDIT HEALTH</small><strong>Optimization Journey</strong><div class="bar"><i style="width:0%"></i></div><p>Credit optimization progress not available yet.</p></div></div>
 
   <div class="section-label" id="health"><h3>Credit Health &amp; Goals</h3><a href="#">View Full Analysis →</a></div>
   <div class="health-grid"><section class="health-card"><h4>Credit Factor Analysis</h4><div class="factor"><span>Payment History</span><div class="track"><div class="fill" style="width:86%"></div></div><b>Strong</b></div><div class="factor"><span>Utilization</span><div class="track"><div class="fill" style="width:61%"></div></div><b>Watch</b></div><div class="factor"><span>Account Age</span><div class="track"><div class="fill" style="width:74%"></div></div><b>Good</b></div><div class="factor"><span>Inquiries</span><div class="track"><div class="fill" style="width:68%"></div></div><b>Good</b></div><div class="factor"><span>Credit Mix</span><div class="track"><div class="fill" style="width:79%"></div></div><b>Good</b></div></section><section class="health-card"><h4>Financial Goals</h4><div class="goal-list"><div class="goal"><strong>🏠 Home Readiness</strong><p>Track priority actions before the next readiness review.</p></div><div class="goal"><strong>🚗 Auto Financing</strong><p>Understand which factors may need attention before financing.</p></div><div class="goal"><strong>🏢 Business Funding</strong><p>Complete Business CreditOS milestones to improve readiness.</p></div></div></section></div>
