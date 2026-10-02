@@ -55,7 +55,7 @@ class CreditOS_Case_Preparation {
             array(
                 'methods' => WP_REST_Server::CREATABLE,
                 'callback' => array( $this, 'prepare_case' ),
-                'permission_callback' => array( $this, 'can_access_candidate' ),
+                'permission_callback' => array( $this, 'can_prepare_case' ),
             ),
         ) );
     }
@@ -90,6 +90,12 @@ class CreditOS_Case_Preparation {
         return $client_id > 0 && $client_id === (int) $candidate['client_id'];
     }
 
+    public function can_prepare_case( $request ) {
+        if ( ! is_user_logged_in() ) return false;
+        return current_user_can( 'manage_options' )
+            || current_user_can( 'creditos_manage_disputes' );
+    }
+
     private function readiness( $candidate ) {
         $p = $this->wpdb->prefix;
         if ( ! empty( $candidate['collection_id'] ) ) {
@@ -106,7 +112,7 @@ class CreditOS_Case_Preparation {
         $checks = array(
             'candidate_exists' => true,
             'potential_inaccuracy' => 'potential_inaccuracy' === $candidate['review_status'],
-            'discrepancy_documented' => ! empty( $candidate['discrepancy_type'] ) && 'none' !== $candidate['discrepancy_type'],
+            'discrepancy_documented' => ! empty( $candidate['discrepancy_type'] ) && 'none' !== $candidate['discrepancy_type'] && ! empty( $candidate['discrepancy_field'] ) && '' !== trim( (string) $candidate['discrepancy_details'] ),
             'accepted_evidence' => $accepted > 0,
         );
         return array( 'ready' => ! in_array( false, $checks, true ), 'checks' => $checks, 'accepted_evidence' => $accepted );
