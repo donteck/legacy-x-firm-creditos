@@ -13,6 +13,7 @@ class CreditOS_Legal_Review {
         dbDelta("CREATE TABLE {$p}creditos_legal_reviews (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             draft_id BIGINT UNSIGNED NOT NULL,
+            draft_revision INT UNSIGNED NOT NULL DEFAULT 1,
             review_status VARCHAR(30) NOT NULL DEFAULT 'in_review',
             legal_references LONGTEXT NULL,
             reviewer_notes LONGTEXT NULL,
@@ -42,8 +43,8 @@ class CreditOS_Legal_Review {
     }
     private function safeguards_current($draft){
         $p=$this->wpdb->prefix;
-        $case=$this->wpdb->get_row($this->wpdb->prepare("SELECT cp.*,COALESCE(t.review_status,c.review_status) review_status,COALESCE(t.discrepancy_type,c.discrepancy_type) discrepancy_type FROM {$p}creditos_case_preparations cp LEFT JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id AND t.report_id=cp.report_id AND t.client_id=cp.client_id LEFT JOIN {$p}creditos_collections c ON c.id=cp.collection_id AND c.report_id=cp.report_id AND c.client_id=cp.client_id WHERE cp.id=%d AND (t.id IS NOT NULL OR c.id IS NOT NULL) LIMIT 1",$draft['case_id']),ARRAY_A);
-        if(!$case||'potential_inaccuracy'!==$case['review_status']||empty($case['discrepancy_type'])||'none'===$case['discrepancy_type'])return false;
+        $case=$this->wpdb->get_row($this->wpdb->prepare("SELECT cp.*,COALESCE(t.review_status,c.review_status) review_status,COALESCE(t.discrepancy_type,c.discrepancy_type) discrepancy_type,COALESCE(t.discrepancy_field,c.discrepancy_field) discrepancy_field,COALESCE(t.discrepancy_details,c.discrepancy_details) discrepancy_details FROM {$p}creditos_case_preparations cp LEFT JOIN {$p}creditos_tradelines t ON t.id=cp.tradeline_id AND t.report_id=cp.report_id AND t.client_id=cp.client_id LEFT JOIN {$p}creditos_collections c ON c.id=cp.collection_id AND c.report_id=cp.report_id AND c.client_id=cp.client_id WHERE cp.id=%d AND (t.id IS NOT NULL OR c.id IS NOT NULL) LIMIT 1",$draft['case_id']),ARRAY_A);
+        if(!$case||'potential_inaccuracy'!==$case['review_status']||empty($case['discrepancy_type'])||'none'===$case['discrepancy_type']||empty($case['discrepancy_field'])||''===trim((string)$case['discrepancy_details']))return false;
         if(!empty($case['collection_id']))$accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_collection_evidence WHERE report_id=%d AND collection_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['collection_id'],$case['client_id']));
         else $accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_tradeline_evidence WHERE report_id=%d AND tradeline_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['tradeline_id'],$case['client_id']));
         return $accepted>0;
@@ -59,6 +60,7 @@ class CreditOS_Legal_Review {
         $d=$this->draft($r['id']); if(!$d) return new WP_Error('creditos_draft_missing','Draft not found.',array('status'=>404));
         if(!$this->safeguards_current($d))return new WP_Error('creditos_case_revalidation_required','Underlying case safeguards changed. Restore the required review, discrepancy, and accepted evidence before Legal Review.',array('status'=>409));
         $review=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->wpdb->prefix}creditos_legal_reviews WHERE draft_id=%d LIMIT 1",$d['id']),ARRAY_A);
+        if($review && (int)($review['draft_revision']??1)!==(int)($d['revision_number']??1)) $review=null;
         return rest_ensure_response(array('draft'=>$d,'review'=>$review,'can_review'=>current_user_can('creditos_manage_disputes')||current_user_can('manage_options')));
     }
     public function save_review($r){
@@ -71,7 +73,7 @@ class CreditOS_Legal_Review {
         if('validated'===$status && ''===trim($refs)) return new WP_Error('creditos_references_required','Validated review requires documented legal/reference sources.',array('status'=>409));
         $table=$this->wpdb->prefix.'creditos_legal_reviews';
         $existing=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$table} WHERE draft_id=%d",$d['id']));
-        $data=array('review_status'=>$status,'legal_references'=>$refs,'reviewer_notes'=>$notes,'reviewer_id'=>get_current_user_id(),'reviewed_at'=>current_time('mysql'),'updated_at'=>current_time('mysql'));
+        $data=array('draft_revision'=>max(1,(int)($d['revision_number']??1)),'review_status'=>$status,'legal_references'=>$refs,'reviewer_notes'=>$notes,'reviewer_id'=>get_current_user_id(),'reviewed_at'=>current_time('mysql'),'updated_at'=>current_time('mysql'));
         if($existing){ $ok=$this->wpdb->update($table,$data,array('id'=>$existing)); $id=$existing; }
         else { $data['draft_id']=(int)$d['id']; $ok=$this->wpdb->insert($table,$data); $id=(int)$this->wpdb->insert_id; }
         if(false===$ok) return new WP_Error('creditos_review_save_failed','Legal review could not be saved.',array('status'=>500));
