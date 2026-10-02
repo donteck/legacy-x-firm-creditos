@@ -224,7 +224,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/collections/(?P<collection_id>\\d+)/evidence',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'upload_collection_evidence'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/collections/(?P<collection_id>\\d+)/evidence/(?P<evidence_id>\\d+)',array('methods'=>WP_REST_Server::DELETABLE,'callback'=>array($this,'delete_collection_evidence'),'permission_callback'=>array($this,'client_access')));register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/collections/(?P<collection_id>\\d+)/evidence/(?P<evidence_id>\\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_collection_evidence_file'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/collections/(?P<collection_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'get_collection_dispute_candidate'),'permission_callback'=>array($this,'client_access')));
-        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/collections/(?P<collection_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_collection_dispute_candidate'),'permission_callback'=>array($this,'client_access')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/collections/(?P<collection_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_collection_dispute_candidate'),'permission_callback'=>array($this,'can_prepare_dispute_candidate')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/payment-history',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_payment_history'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/bureau-comparison',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_bureau_comparison'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_evidence'),'permission_callback'=>array($this,'client_access')));
@@ -232,7 +232,7 @@ class CreditOS_Report_Import {
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence/(?P<evidence_id>\\d+)',array('methods'=>WP_REST_Server::DELETABLE,'callback'=>array($this,'delete_tradeline_evidence'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/evidence/(?P<evidence_id>\\d+)/review',array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'review_tradeline_evidence_file'),'permission_callback'=>array($this,'can_review_evidence')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'get_dispute_candidate'),'permission_callback'=>array($this,'client_access')));
-        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_dispute_candidate'),'permission_callback'=>array($this,'client_access')));
+        register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/dispute-candidate',array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_dispute_candidate'),'permission_callback'=>array($this,'can_prepare_dispute_candidate')));
         register_rest_route('creditos/v1','/reviews',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_saved_reviews'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\\d+)/tradelines/(?P<tradeline_id>\\d+)/review-history',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'tradeline_review_history'),'permission_callback'=>array($this,'client_access')));
         register_rest_route('creditos/v1','/reports/(?P<id>\d+)/tradelines/(?P<tradeline_id>\d+)/corrections',array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'list_tradeline_corrections'),'permission_callback'=>array($this,'client_access')));
@@ -243,6 +243,12 @@ class CreditOS_Report_Import {
     public function client_access(){if(!is_user_logged_in())return false;return(bool)$this->current_client();}
     public function staff_only(){return is_user_logged_in()&&(current_user_can('manage_options')||current_user_can('creditos_manage_clients'));}
     public function can_review_evidence(){
+        return is_user_logged_in() && (
+            current_user_can('manage_options') ||
+            current_user_can('creditos_manage_disputes')
+        );
+    }
+    public function can_prepare_dispute_candidate(){
         return is_user_logged_in() && (
             current_user_can('manage_options') ||
             current_user_can('creditos_manage_disputes')
