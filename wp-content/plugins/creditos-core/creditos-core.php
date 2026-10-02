@@ -22,6 +22,7 @@ require_once CREDITOS_CORE_DIR.'includes/class-creditos-legal-review.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-final-approval.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-delivery-tracking.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-response-outcome.php';
+require_once CREDITOS_CORE_DIR.'includes/class-creditos-qa-fixture.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-core.php';
 register_activation_hook(__FILE__,array('CreditOS_Activator','activate'));
 
