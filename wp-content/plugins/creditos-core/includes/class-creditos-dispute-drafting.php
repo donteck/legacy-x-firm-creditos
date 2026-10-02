@@ -64,7 +64,13 @@ class CreditOS_Dispute_Drafting {
     }
     private function case_is_current($case) {
         $p=$this->wpdb->prefix;
-        if('potential_inaccuracy'!==($case['review_status']??null) || empty($case['discrepancy_type']) || 'none'===($case['discrepancy_type']??null)) return false;
+        if(
+            'potential_inaccuracy'!==($case['review_status']??null)
+            || empty($case['discrepancy_type'])
+            || 'none'===($case['discrepancy_type']??null)
+            || empty($case['discrepancy_field'])
+            || ''===trim((string)($case['discrepancy_details']??''))
+        ) return false;
         if(!empty($case['collection_id'])) $accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_collection_evidence WHERE report_id=%d AND collection_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['collection_id'],$case['client_id']));
         else $accepted=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$p}creditos_tradeline_evidence WHERE report_id=%d AND tradeline_id=%d AND client_id=%d AND review_status='accepted'",$case['report_id'],$case['tradeline_id'],$case['client_id']));
         return $accepted>0;
