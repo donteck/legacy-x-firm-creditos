@@ -43,6 +43,7 @@ class CreditOS_Dispute_Drafting {
         register_rest_route('creditos/v1','/cases/(?P<id>\\d+)/draft',array(
             array('methods'=>WP_REST_Server::READABLE,'callback'=>array($this,'get_draft'),'permission_callback'=>array($this,'can_access_case')),
             array('methods'=>WP_REST_Server::CREATABLE,'callback'=>array($this,'create_draft'),'permission_callback'=>array($this,'can_manage_draft')),
+            array('methods'=>WP_REST_Server::EDITABLE,'callback'=>array($this,'update_draft'),'permission_callback'=>array($this,'can_manage_draft')),
         ));
     }
     private function case_record($id) {
@@ -98,6 +99,31 @@ class CreditOS_Dispute_Drafting {
         ),ARRAY_A);
         return rest_ensure_response(array('case'=>$case,'draft'=>$draft,'can_create'=>current_user_can('creditos_manage_disputes')||current_user_can('manage_options')));
     }
+    public function update_draft($request) {
+        $case=$this->case_record($request['id']);
+        if(!$case) return new WP_Error('creditos_case_missing','Prepared case not found.',array('status'=>404));
+        if(!$this->case_is_current($case)) return new WP_Error('creditos_case_revalidation_required','Case safeguards changed after preparation. Restore the required factual review and accepted evidence before editing this draft.',array('status'=>409));
+        $table=$this->wpdb->prefix.'creditos_dispute_drafts';
+        $draft=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$table} WHERE case_id=%d LIMIT 1",$case['id']),ARRAY_A);
+        if(!$draft) return new WP_Error('creditos_draft_missing','Draft not found.',array('status'=>404));
+        if('not_reviewed'!==($draft['legal_review_status']??'not_reviewed') || 'not_approved'!==($draft['approval_status']??'not_approved')) {
+            return new WP_Error('creditos_draft_locked','This draft is locked because Legal Review or Final Approval has already started. Create a controlled revision workflow before changing reviewed content.',array('status'=>409));
+        }
+        $recipient_type=sanitize_key((string)$request->get_param('recipient_type'));
+        if(!in_array($recipient_type,array('bureau','furnisher'),true)) $recipient_type=$draft['recipient_type'];
+        $recipient=sanitize_text_field((string)$request->get_param('recipient_name'));
+        $subject=sanitize_text_field((string)$request->get_param('subject_line'));
+        $body=sanitize_textarea_field((string)$request->get_param('draft_body'));
+        if(''===$recipient || ''===$subject || ''===$body) return new WP_Error('creditos_draft_fields_required','Recipient, subject, and draft body are required.',array('status'=>400));
+        $ok=$this->wpdb->update($table,array(
+            'recipient_type'=>$recipient_type,'recipient_name'=>$recipient,'subject_line'=>$subject,'draft_body'=>$body,
+            'draft_status'=>'draft','updated_at'=>current_time('mysql')
+        ),array('id'=>(int)$draft['id']));
+        if(false===$ok) return new WP_Error('creditos_draft_update_failed','Draft changes could not be saved.',array('status'=>500));
+        $saved=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$table} WHERE id=%d",$draft['id']),ARRAY_A);
+        return rest_ensure_response(array('updated'=>true,'draft'=>$saved,'notice'=>'Draft changes saved. Legal Review and Final Approval remain locked until the draft is reviewed.'));
+    }
+
     private function factual_template($case) {
         $creditor=$case['creditor_name']?:$case['furnisher']?:'the reporting entity';
         $account=$case['account_number_masked']?' (account '.$case['account_number_masked'].')':'';
