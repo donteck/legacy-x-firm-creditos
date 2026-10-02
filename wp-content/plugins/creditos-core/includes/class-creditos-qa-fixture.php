@@ -27,9 +27,16 @@ class CreditOS_QA_Fixture {
     }
     private function test_client(){
         $t=$this->wpdb->prefix.'creditos_clients';
-        $id=(int)$this->wpdb->get_var("SELECT id FROM {$t} WHERE email='qa-fixture@creditos.invalid' LIMIT 1");
+        $uid=get_current_user_id();
+        /*
+         * Account Inspector REST endpoints are intentionally scoped to the
+         * logged-in user's CreditOS client. Therefore the QA report must live
+         * under that same client; otherwise the UI correctly returns
+         * "Credit report not found." We never modify a real tradeline.
+         */
+        $id=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$t} WHERE wp_user_id=%d LIMIT 1",$uid));
         if($id) return $id;
-        $this->wpdb->insert($t,array('client_type'=>'personal','status'=>'active','first_name'=>'QA','last_name'=>'TEST DATA','email'=>'qa-fixture@creditos.invalid','created_at'=>current_time('mysql'),'updated_at'=>current_time('mysql')));
+        $this->wpdb->insert($t,array('wp_user_id'=>$uid,'client_type'=>'personal','status'=>'active','first_name'=>'QA','last_name'=>'TEST DATA','email'=>'qa-fixture-'.absint($uid).'@creditos.invalid','created_at'=>current_time('mysql'),'updated_at'=>current_time('mysql')));
         return (int)$this->wpdb->insert_id;
     }
     public function create(){
