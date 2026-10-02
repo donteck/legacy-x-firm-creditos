@@ -32,11 +32,27 @@ class CreditOS_Dispute_Drafting {
             created_by BIGINT UNSIGNED NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            revision_number INT UNSIGNED NOT NULL DEFAULT 1,
             PRIMARY KEY  (id),
             UNIQUE KEY case_id (case_id),
             KEY client_id (client_id),
             KEY dispute_item_id (dispute_item_id),
             KEY draft_status (draft_status)
+        ) $c;");
+        dbDelta("CREATE TABLE {$p}creditos_dispute_draft_revisions (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            draft_id BIGINT UNSIGNED NOT NULL,
+            case_id BIGINT UNSIGNED NOT NULL,
+            revision_number INT UNSIGNED NOT NULL,
+            recipient_type VARCHAR(30) NOT NULL,
+            recipient_name VARCHAR(190) NULL,
+            subject_line VARCHAR(255) NULL,
+            draft_body LONGTEXT NULL,
+            changed_by BIGINT UNSIGNED NOT NULL,
+            changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY draft_revision (draft_id,revision_number),
+            KEY case_id (case_id)
         ) $c;");
     }
     public function register_routes() {
@@ -115,11 +131,22 @@ class CreditOS_Dispute_Drafting {
         $subject=sanitize_text_field((string)$request->get_param('subject_line'));
         $body=sanitize_textarea_field((string)$request->get_param('draft_body'));
         if(''===$recipient || ''===$subject || ''===$body) return new WP_Error('creditos_draft_fields_required','Recipient, subject, and draft body are required.',array('status'=>400));
+        $revision=max(1,(int)($draft['revision_number']??1))+1;
+        $revision_table=$this->wpdb->prefix.'creditos_dispute_draft_revisions';
+        $snapshot=$this->wpdb->insert($revision_table,array(
+            'draft_id'=>(int)$draft['id'],'case_id'=>(int)$case['id'],'revision_number'=>$revision,
+            'recipient_type'=>$recipient_type,'recipient_name'=>$recipient,'subject_line'=>$subject,'draft_body'=>$body,
+            'changed_by'=>get_current_user_id(),'changed_at'=>current_time('mysql')
+        ));
+        if(!$snapshot) return new WP_Error('creditos_draft_revision_failed','Draft revision could not be recorded.',array('status'=>500));
         $ok=$this->wpdb->update($table,array(
             'recipient_type'=>$recipient_type,'recipient_name'=>$recipient,'subject_line'=>$subject,'draft_body'=>$body,
-            'draft_status'=>'draft','updated_at'=>current_time('mysql')
+            'draft_status'=>'draft','revision_number'=>$revision,'updated_at'=>current_time('mysql')
         ),array('id'=>(int)$draft['id']));
-        if(false===$ok) return new WP_Error('creditos_draft_update_failed','Draft changes could not be saved.',array('status'=>500));
+        if(false===$ok) {
+            $this->wpdb->delete($revision_table,array('draft_id'=>(int)$draft['id'],'revision_number'=>$revision));
+            return new WP_Error('creditos_draft_update_failed','Draft changes could not be saved.',array('status'=>500));
+        }
         $saved=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$table} WHERE id=%d",$draft['id']),ARRAY_A);
         return rest_ensure_response(array('updated'=>true,'draft'=>$saved,'notice'=>'Draft changes saved. Legal Review and Final Approval remain locked until the draft is reviewed.'));
     }
@@ -152,7 +179,7 @@ class CreditOS_Dispute_Drafting {
             'case_id'=>(int)$case['id'],'client_id'=>(int)$case['client_id'],'dispute_item_id'=>(int)$case['dispute_item_id'],
             'draft_status'=>'draft','recipient_type'=>$recipient_type,'recipient_name'=>$recipient,'subject_line'=>$subject,'draft_body'=>$body,
             'legal_review_status'=>'not_reviewed','approval_status'=>'not_approved','created_by'=>get_current_user_id(),
-            'created_at'=>current_time('mysql'),'updated_at'=>current_time('mysql')
+            'created_at'=>current_time('mysql'),'updated_at'=>current_time('mysql'),'revision_number'=>1
         ));
         if(!$ok) return new WP_Error('creditos_draft_failed','Draft could not be created.',array('status'=>500));
         $draft=$this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$table} WHERE id=%d",$this->wpdb->insert_id),ARRAY_A);
