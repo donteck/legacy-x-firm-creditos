@@ -70,7 +70,12 @@ class CreditOS_Legal_Review {
         if(!in_array($status,array('in_review','changes_required','validated'),true)) return new WP_Error('creditos_review_status','Choose a valid legal review status.',array('status'=>400));
         $refs=sanitize_textarea_field((string)$r->get_param('legal_references'));
         $notes=sanitize_textarea_field((string)$r->get_param('reviewer_notes'));
-        if('validated'===$status && ''===trim($refs)) return new WP_Error('creditos_references_required','Validated review requires documented legal/reference sources.',array('status'=>409));
+        if('validated'===$status){
+            if(''===trim($refs)) return new WP_Error('creditos_references_required','Validated review requires documented legal/reference sources.',array('status'=>409));
+            if(''===trim($notes)) return new WP_Error('creditos_reviewer_notes_required','Validated review requires reviewer notes documenting what was checked and why validation is appropriate.',array('status'=>409));
+            $ref_lines=array_values(array_filter(array_map('trim',preg_split('/\r\n|\r|\n/', $refs))));
+            if(empty($ref_lines)) return new WP_Error('creditos_references_required','Add at least one verified legal or compliance reference before validation.',array('status'=>409));
+        }
         $table=$this->wpdb->prefix.'creditos_legal_reviews';
         $existing=(int)$this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM {$table} WHERE draft_id=%d",$d['id']));
         $data=array('draft_revision'=>max(1,(int)($d['revision_number']??1)),'review_status'=>$status,'legal_references'=>$refs,'reviewer_notes'=>$notes,'reviewer_id'=>get_current_user_id(),'reviewed_at'=>current_time('mysql'),'updated_at'=>current_time('mysql'));
