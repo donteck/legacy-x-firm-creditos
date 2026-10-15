@@ -65,7 +65,7 @@ class CreditOS_Dispute_Drafting {
     private function case_record($id) {
         $p=$this->wpdb->prefix;
         return $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT cp.*,di.bureau,di.furnisher,di.account_label,di.dispute_reason,
+            "SELECT cp.*,t.bureau AS bureau,COALESCE(t.creditor_name,c.collector_name) AS furnisher,di.account_label,di.dispute_reason,
                     COALESCE(t.creditor_name,c.collector_name) AS creditor_name,
                     t.account_number_masked,
                     COALESCE(t.discrepancy_type,c.discrepancy_type) AS discrepancy_type,
