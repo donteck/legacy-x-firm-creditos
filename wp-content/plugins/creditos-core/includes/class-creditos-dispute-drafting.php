@@ -68,6 +68,7 @@ class CreditOS_Dispute_Drafting {
             "SELECT cp.*,t.bureau AS bureau,COALESCE(t.creditor_name,c.collector_name) AS furnisher,di.account_label,di.dispute_reason,
                     COALESCE(t.creditor_name,c.collector_name) AS creditor_name,
                     t.account_number_masked,
+                    COALESCE(t.review_status,c.review_status) AS review_status,
                     COALESCE(t.discrepancy_type,c.discrepancy_type) AS discrepancy_type,
                     COALESCE(t.discrepancy_field,c.discrepancy_field) AS discrepancy_field,
                     COALESCE(t.discrepancy_details,c.discrepancy_details) AS discrepancy_details
