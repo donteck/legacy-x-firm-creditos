@@ -20,6 +20,7 @@ require_once CREDITOS_CORE_DIR.'includes/class-creditos-case-preparation.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-dispute-drafting.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-legal-review.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-final-approval.php';
+require_once CREDITOS_CORE_DIR.'includes/class-creditos-mail-provider.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-delivery-tracking.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-response-outcome.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-qa-fixture.php';
