@@ -23,6 +23,7 @@ require_once CREDITOS_CORE_DIR.'includes/class-creditos-final-approval.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-mail-provider.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-mail-sandbox.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-mail-sandbox-test.php';
+require_once CREDITOS_CORE_DIR.'includes/class-creditos-mail-package-preview.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-delivery-tracking.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-response-outcome.php';
 require_once CREDITOS_CORE_DIR.'includes/class-creditos-qa-fixture.php';
